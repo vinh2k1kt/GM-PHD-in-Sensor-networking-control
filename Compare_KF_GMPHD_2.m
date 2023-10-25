@@ -8,11 +8,13 @@
 clc, clear, close all;
 %% Simulation Setting
 
+num_of_observation = 1;
 duration = 40;       %number of time step
 model = gen_model; 
 
 %% Ground-truth, Noise Setting
 
+num_clutters = 20;
 gt(:,1) = [0;0;12;15];  %[x,y,vx,vy]
 
 for i = 2:duration
@@ -26,10 +28,9 @@ model.pdf_c= 1/prod(model.range_c(:,2)-model.range_c(:,1));         % uniform cl
 
 for i = 1:duration
     %Gen Observation
-    z{i} = repmat(model.H * gt(:, i),1,1) + mvnrnd(0,1,2,1);
+    z{i} = repmat(model.H * gt(:, i),1,num_of_observation) + mvnrnd(0,1,2,1);
 
     %Gen Clutter
-    num_clutters = 10;
     c(:,:,i) = [unifrnd(gt(1,1),gt(1,duration),1,num_clutters);
                 unifrnd(gt(2,1),gt(2,duration),1,num_clutters)];
 

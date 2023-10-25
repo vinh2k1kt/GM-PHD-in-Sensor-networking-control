@@ -7,6 +7,8 @@
 
 clc, clear, close all;
 %% Simulation Setting
+
+num_of_observation = 1;
 duration = 10;
 model = gen_model;
 
@@ -19,15 +21,18 @@ for i = 2:duration
 end
 
 %% Generate measurement
+
 for i = 1:duration
-    z{i} = repmat(model.H * gt(:, i),1,1) + 1/1.5*mvnrnd(0,1,2,1);
+    z{i} = repmat(model.H * gt(:, i),1,num_of_observation) + 1/1.5*mvnrnd(0,1,2,1);
 end
 
 %% Kalman Prior Initialization
+
 KM_m_update{1}(:, 1) = [0; 10; 10; 10];
 KM_P_update{1}(:, :, 1) = diag([100 100 100 100]).^2;
 
 %% GM-PHD Prior Initialization
+
 w_update{1} = [0.5];
 m_update{1}(:, 1) = [0; 10; 10; 10];
 P_update{1}(:, :, 1) = diag([100 100 100 100]).^2;
@@ -36,20 +41,25 @@ est = cell(duration, 1);
 num_objects = zeros(duration, 1);
 
 %% Pruning & Merging Parameter Setting
+
 elim_threshold = 1e-5;        % pruning threshold
 merge_threshold = 4;          % merging threshold
 L_max = 100;                  % limit on number of Gaussian components
 
 %% Recursive filtering
+
 for k = 2:duration
     %% Kalman Predict
+
     [KM_m_predict, KM_P_predict] = KF_predict(model, KM_m_update{k-1}, KM_P_update{k-1});
 
     %% GM-PHD Predict
+
     [m_predict, P_predict] = KF_predict(model, m_update{k-1}, P_update{k-1});
     w_predict = model.P_S * w_update{k-1};
 
     %% Kalman Update
+    
     n = size(z{k},2);       %number of measurement
     for i = 1:n
         [KM_m_update{k}, KM_P_update{k}] = KF_update_single(z{k}, model.H, model.R, KM_m_predict, KM_P_predict);

@@ -55,7 +55,7 @@ L_max = 100;                  % limit on number of Gaussian components
 %% Recursive filtering
 for k = 2:duration
     %% Predict
-    [m_predict, P_predict] = predict_KF(model, m_update{k-1}, P_update{k-1});
+    [m_predict, P_predict] = KF_predict(model, m_update{k-1}, P_update{k-1});
     w_predict = model.P_S * w_update{k-1};
     % Cat with append birth object
     m_predict = cat(2, model.m_birth, m_predict);
@@ -75,7 +75,7 @@ for k = 2:duration
     [likelihood_tmp] = cal_likelihood(z{k},model,m_predict,P_predict);
 
     if n ~= 0
-        [m_temp, P_temp] = update_KF(z{k},model,m_predict,P_predict);
+        [m_temp, P_temp] = KF_update_multiple(z{k},model,m_predict,P_predict);
         for i = 1:n
             % Calculate detection weight of each probable object detect
             w_temp = model.P_D * w_predict .* likelihood_tmp(:,i);
