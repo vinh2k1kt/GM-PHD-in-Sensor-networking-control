@@ -1,30 +1,36 @@
-function model = gen_model
+function model = Gen_model
 % Transition model
-model.xdim = 4;      % x dimension
-model.dt = 1;       % sampling period
+model.x_dim = 4;     % x dimension
+model.dt = 10;       % sampling period
+
 model.F = [1 0 model.dt 0;
            0 1 0 model.dt;
            0 0 1 0;
            0 0 0 1;
            ];
 model.P_S = 0.99;     % Surviving Probability
+
 % Measurement model
-model.zdim = 2;     % z dimension
+model.z_dim = 2;       % z dimension
 model.H = [1 0 0 0;
            0 1 0 0;
           ]; 
+
 % Transition Noise
 Trans_noise_mag = 15;
-%upx^2 = 3, upy^2 = 2.5, uvx^2 = 2, upy^2 = 1
+
+%upx^2; upy^2; uvx^2; upy^2
 model.Q = [3 0 0 0;
            0 2.5 0 0;
            0 0 2 0;
            0 0 0 1;
           ];
 model.Q = model.Q * Trans_noise_mag;
+
 % Measurement Noise
 Meas_noise_mag = 5;
-%upx^2 = .5, upy^2 = .65, uvx^2 = .4, uvy^2 = .35
+
+%upx^2; upy^2; uvx^2; uvy^2
 model.R = [.5 0;
            0 .65;
           ];
@@ -33,8 +39,8 @@ model.R = model.R * Meas_noise_mag;
 % Birth parameters
 model.L_birth = 2;
 model.w_birth= zeros(model.L_birth,1);                                %weights of Gaussian birth terms (per duration)
-model.m_birth= zeros(model.xdim,model.L_birth);                       %means of Gaussian birth terms 
-model.P_birth= zeros(model.xdim,model.xdim,model.L_birth);            %cov of Gaussian birth terms
+model.m_birth= zeros(model.x_dim,model.L_birth);                       %means of Gaussian birth terms 
+model.P_birth= zeros(model.x_dim,model.x_dim,model.L_birth);            %cov of Gaussian birth terms
 
 model.w_birth= [.01; .01];                                            %birth of simulation (example 1)
 model.m_birth= [ [250; 250; 0; 0] [-250; -250; 0; 0] ];
