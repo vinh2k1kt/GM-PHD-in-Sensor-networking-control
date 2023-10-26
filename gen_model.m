@@ -1,4 +1,4 @@
-function model = Gen_model
+function model = gen_model
 % Transition model
 model.x_dim = 4;     % x dimension
 model.dt = 10;       % sampling period
