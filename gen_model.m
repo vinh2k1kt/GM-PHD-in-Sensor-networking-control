@@ -61,6 +61,6 @@ model.P_D = 0.99;       % probability of detection in measurements
 model.P_MD= 1-model.P_D; % probability of missed detection in measurements
 
 % Clutter parameters
-model.lambda_c = 50; % clutter rate
+model.lambda_c = 5; % clutter rate
 model.range_c= [-1000 1000; -1000 1000];      % uniform clutter region
 model.pdf_c= 1/prod(model.range_c(:,2)-model.range_c(:,1)); % uniform clutter density
