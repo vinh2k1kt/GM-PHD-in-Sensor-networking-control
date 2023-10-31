@@ -45,7 +45,7 @@ end
 
 model = gen_model;
 model.range_c = sur_area;
-model.pdf_c = 1/prod(model.range_c(2,:)-model.range_c(1,:));
+model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 
 %% Generate Ground Truth
 
@@ -90,15 +90,12 @@ end
 
 %% Prior Initialze
 
-w_update{1} = [0.5; 0.5];
+w_update{1} = [0.5];
 
 m_update{1}(:, 1) = [100; 100; 10; 10];
-P_update{1}(:, :, 1) = diag([100 100 100 100]).^2;
+P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
-m_update{1}(:, 2) = [200; 100; 10; 10];
-P_update{1}(:, :, 2) = diag([100 100 100 100]).^2;
-
-L_update = 2;
+L_update = 1;
 est_state = cell(duration, 1);
 num_objects = zeros(duration, 1);
 
@@ -111,9 +108,9 @@ for k = 2:duration
     [m_predict, P_predict] = predict_KF(model, m_update{k-1}, P_update{k-1});
     w_predict = model.P_S * w_update{k-1};
 
+    w_predict = cat(1, model.w_birth, w_predict);
     m_predict = cat(2, model.m_birth, m_predict);
     P_predict = cat(3, model.P_birth, P_predict);
-    w_predict = cat(1, model.w_birth, w_predict);
 
     %% Update
     n = size(z{k},2);       %number of measurement
@@ -132,7 +129,12 @@ for k = 2:duration
 
             % Calculate detection weight of each probable object detect
             w_temp = model.P_D * w_predict .* likelihood_tmp(:,i);
-            w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
+
+            if (hasClutter)
+                w_temp = w_temp ./ (clutter_num(k)*model.pdf_c + sum(w_temp));
+            else
+                w_temp = w_temp ./ (sum(w_temp));
+            end
 
             % Cat all of them to a vector of weight
             w_update{k} = cat(1,w_update{k},w_temp);
@@ -182,7 +184,7 @@ for k = 2:duration
          ' #measurement number=',num2str(n)]);
 end
 
-%% Plot Scenario
+%% Visualize
 
 figure(1);
 hold on;
@@ -190,7 +192,34 @@ hold on;
 for row = 1 : num_of_sensor(2)
     for col = 1: num_of_sensor(1)
         sensor = sensor_network(row,col);
-        plot(sensor.x, sensor.y, '--kx', 'LineWidth', 1.5, 'MarkerSize', 5);
+        sensor_plot = plot(sensor.x, sensor.y, '--kx', 'LineWidth', 1.5, 'MarkerSize', 5);
+    end
+end
+
+gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+
+for i = 1 : duration
+    z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
+end
+
+xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+xlim([sur_area(1,1),sur_area(2,1)]);
+ylim([sur_area(1,2), sur_area(2,2)]);
+title('Sensor POV', ...
+    'FontSize', 14, ...
+    'FontWeight', 'bold');
+legend([sensor_plot,gt1_plot, gt2_plot, z_plot], ...
+    'Sensor', 'Ground truth 1', 'Ground truth 2', 'Measurement', 'Location', 'northeastoutside');
+
+figure(2);
+hold on;
+
+for row = 1 : num_of_sensor(2)
+    for col = 1: num_of_sensor(1)
+        sensor = sensor_network(row,col);
+        sensor_plot = plot(sensor.x, sensor.y, '--kx', 'LineWidth', 1.5, 'MarkerSize', 5);
     end
 end
 
@@ -199,10 +228,40 @@ gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2)
 
 for t = 2:duration
     for k = 1:num_objects(t)
-        est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'go');
+        est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'bo');
     end
 end
 
-for i = 1 : duration
-    z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
+xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+xlim([sur_area(1,1),sur_area(2,1)]);
+ylim([sur_area(1,2), sur_area(2,2)]);
+title('Estimation', ...
+    'FontSize', 14, ...
+    'FontWeight', 'bold');
+legend([sensor_plot,gt1_plot, gt2_plot,est_plot], ...
+    'Sensor', 'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Location', 'northeastoutside');
+
+%Evaluaion
+ospa = zeros(1, duration);
+ospa_cutoff = 50;
+ospa_order = 1;
+
+for t = 2:duration
+    if (~isempty(est_state{t})) 
+        est_mat = est_state{t}(1:2,:);
+    else
+        est_mat = [];
+    end
+
+    ospa(t) = ospa_dist([gt_1(1:2,t), gt_2(1:2,t)], est_mat, ospa_cutoff, ospa_order);
 end
+
+figure (3);
+hold on;
+    
+plot(2:duration, ospa(2:end));
+
+xlabel('Time step');
+ylabel('Distance (in m)');
+title('OSPA Evaluation');
