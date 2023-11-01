@@ -19,12 +19,6 @@ hasClutter = true;
 obj_1 = [0;0;1;1];
 obj_2 = [0;1000;1;-1];
 
-%% Pruning & Merging Parameter Setting
-
-elim_threshold = 1e-5;        % pruning threshold
-merge_threshold = 4;          % merging threshold
-L_max = 100;                  % limit on number of Gaussian components
-
 %% Generate Sensor Coordination
 
 num_of_sensor = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
@@ -92,12 +86,18 @@ end
 
 w_update{1} = [0.5];
 
-m_update{1}(:, 1) = [100; 100; 10; 10];
+m_update{1}(:, 1) = [1000; 1000; 10; 10];
 P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
 L_update = 1;
 est_state = cell(duration, 1);
 num_objects = zeros(duration, 1);
+
+%% Pruning & Merging Parameter Setting
+
+elim_threshold = 1e-5;        % pruning threshold
+merge_threshold = 4;          % merging threshold
+L_max = 100;                  % limit on number of Gaussian components
 
 %% Recursion
 
@@ -131,7 +131,7 @@ for k = 2:duration
             w_temp = model.P_D * w_predict .* likelihood_tmp(:,i);
 
             if (hasClutter)
-                w_temp = w_temp ./ (clutter_num(k)*model.pdf_c + sum(w_temp));
+                w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
             else
                 w_temp = w_temp ./ (sum(w_temp));
             end
@@ -244,7 +244,7 @@ legend([sensor_plot,gt1_plot, gt2_plot,est_plot], ...
 
 %Evaluaion
 ospa = zeros(1, duration);
-ospa_cutoff = 50;
+ospa_cutoff = 100;
 ospa_order = 1;
 
 for t = 2:duration
