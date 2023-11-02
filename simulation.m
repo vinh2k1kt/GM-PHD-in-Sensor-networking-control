@@ -18,9 +18,9 @@ hasBirthObj = true;
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 obj_1 = [0;250;2;0];
-obj_2 = [0;500;100;0];
+obj_2 = [0;750;2;0];
 
-birth_obj_1 = [500;0;0;2];
+birth_obj_1 = [750;0;0;2];
 birth_time_1 = 30;
 b_duration_1 = duration - min(duration, birth_time_1);
 
@@ -210,6 +210,13 @@ end
 figure(1);
 hold on; 
 
+for row = 1 : num_of_sensor(2)
+    for col = 1: num_of_sensor(1)
+        
+    end
+end
+
+
 gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
     ,'Color',[0.9290 0.6940 0.1250]);
 gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
@@ -268,7 +275,7 @@ xlim([sur_area(1,1),sur_area(2,1)]);
 ylim([sur_area(1,2), sur_area(2,2)]);
 title('Estimation', ...
     'FontSize', 14, ...
-    'FontWeight', 'bold');
+    'FontWeight','bold');
 
 if (hasBirthObj)
     legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
@@ -325,4 +332,4 @@ plot(2:duration, ospa(2:end), 'LineWidth', 1, 'Color', [0 1 1]);
 
 xlabel('Time step');
 ylabel('Distance (in m)');
-title('OSPA Evaluation');
+title('OSPA Evaluation', 'FontWeight', 'bold');

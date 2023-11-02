@@ -7,25 +7,25 @@ clc, clear, close all
 
 %% Simulation Setting
 
-loop_time = 1;
+loop_time = 50;
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasMeasNoise = true;
 hasClutter = true;
-hasBirthObj = 0;
+hasBirthObj = true;
 
-doPlotOSPA = false;
-doPlotEstimation = true;
-doPlotAverageOspa = false;
+doPlotOSPA = true;
+doPlotEstimation = false;
+doPlotAverageOspa = true;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
-obj_1 = [0;0;1;1];
-obj_2 = [0;1000;1;-1];
+obj_1 = [0;250;2;0];
+obj_2 = [0;800;2;0];
 
-birth_obj_1 = [500;0;0;2];
+birth_obj_1 = [750;0;0;2];
 birth_time_1 = 30;
 b_duration_1 = duration - min(duration, birth_time_1);
 
@@ -288,13 +288,36 @@ for loop_i = 1 : loop_time
         ospa_order = 1;
         
         for t = 2:duration
+
             if (~isempty(est_state{t})) 
                 est_mat = est_state{t}(1:2,:);
             else
                 est_mat = [];
             end
+            
+            if ~(t > size(gt_1, 2))
+                gt1_mat = gt_1(1:2,t);
+            else
+                gt1_mat = [];
+            end
         
-            ospa(t) = ospa_dist([gt_1(1:2,t), gt_2(1:2,t)], est_mat, ospa_cutoff, ospa_order);
+            if ~(t > size(gt_2, 2))
+                gt2_mat = gt_2(1:2,t);
+            else
+                gt2_mat = [];
+            end
+        
+            if (t <= birth_time_1 || t > (birth_time_1 + b_duration_1))
+                b1_mat = [];
+            else
+                b1_mat = birth_gt_1(1:2, t - birth_time_1);
+            end
+            
+            if (hasBirthObj)
+                ospa(t) = ospa_dist([gt1_mat, gt2_mat, b1_mat], est_mat, ospa_cutoff, ospa_order);
+            else
+                ospa(t) = ospa_dist([gt1_mat, gt2_mat], est_mat, ospa_cutoff, ospa_order);
+    end
         end
         
         avg_ospa(loop_i, :) = ospa;
