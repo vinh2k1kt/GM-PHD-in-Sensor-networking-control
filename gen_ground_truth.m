@@ -1,4 +1,5 @@
-function [ground_truth, orient] = Gen_ground_truth(type,starting_point,duration,model)
+function [ground_truth] = Gen_ground_truth(type,starting_point,duration,model)
+
     ground_truth = zeros(model.x_dim, duration);
     
     switch type

@@ -13,11 +13,16 @@ sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasMeasNoise = true;
 hasClutter = true;
+hasBirthObj = true;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
-obj_1 = [0;0;1;1];
-obj_2 = [0;1000;1;-1];
+obj_1 = [0;250;2;0];
+obj_2 = [0;500;100;0];
+
+birth_obj_1 = [500;0;0;2];
+birth_time_1 = 30;
+b_duration_1 = duration - min(duration, birth_time_1);
 
 %% Generate Sensor Coordination
 
@@ -46,23 +51,39 @@ model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 gt_1 = gen_ground_truth('Linear',obj_1,duration,model);
 gt_2 = gen_ground_truth('Linear', obj_2, duration,model);
 
-gt_1 = hyper_box(sur_area, gt_1);
-gt_2 = hyper_box(sur_area, gt_2);
+gt_1 = hyper_box(sur_area, gt_1, duration);
+gt_2 = hyper_box(sur_area, gt_2, duration);
+
+birth_gt_1 = gen_ground_truth('Linear', birth_obj_1, b_duration_1, model);
+
+birth_gt_1 = hyper_box(sur_area, birth_gt_1, b_duration_1);
+
+b_duration_1 = size(birth_gt_1, 2);
 
 %% Generate Measurement
 
 [z_1, o_num_1] = gen_meas(model, hasMeasNoise, duration, gt_1);
 [z_2, o_num_2] = gen_meas(model, hasMeasNoise, duration, gt_2);
 
+[b_1, b_num_1] = gen_meas(model, hasMeasNoise, b_duration_1, birth_gt_1);
+
 % Padding 
+
 z_1 = [z_1' cell(duration - size(z_1, 1), 1)']';
 z_2 = [z_2' cell(duration - size(z_2, 1), 1)']';
+
+b_1 = [cell(birth_time_1, 1)', b_1', cell(duration - b_duration_1 - birth_time_1, 1)']';
 
 %Merging
 
 z = cell(duration, 1);
 for i = 1 : duration
-    z{i} = [z_1{i} z_2{i}];
+
+    if (hasBirthObj)
+        z{i} = [z_1{i} z_2{i} b_1{i}];
+    else
+        z{i} = [z_1{i} z_2{i}];
+    end
 end
 
 %% Generate Clutter
@@ -175,29 +196,29 @@ for k = 2:duration
         est_state{k} = [est_state{k} m_update{k}(:,i)];
     end
 
-    %---display diagnostics
-    disp([' time= ',num2str(k),...
-         ' #gaus orig=',num2str(L_posterior),...
-         ' #gaus elim=',num2str(L_prune), ...
-         ' #gaus merg=',num2str(L_merge), ...
-         ' #gaus cap=',num2str(L_cap), ...
-         ' #measurement number=',num2str(n)]);
+%     %---display diagnostics
+%     disp([' time= ',num2str(k),...
+%          ' #gaus orig=',num2str(L_posterior),...
+%          ' #gaus elim=',num2str(L_prune), ...
+%          ' #gaus merg=',num2str(L_merge), ...
+%          ' #gaus cap=',num2str(L_cap), ...
+%          ' #measurement number=',num2str(n)]);
 end
 
 %% Visualize
 
 figure(1);
-hold on;
-    
-for row = 1 : num_of_sensor(2)
-    for col = 1: num_of_sensor(1)
-        sensor = sensor_network(row,col);
-        sensor_plot = plot(sensor.x, sensor.y, '--kx', 'LineWidth', 1.5, 'MarkerSize', 5);
-    end
-end
+hold on; 
 
-gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
-gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color',[0.9290 0.6940 0.1250]);
+gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [1 0 0]);
+
+if (hasBirthObj)
+    b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color',[0.1490 0.9882 0.7216]);
+end
 
 for i = 1 : duration
     z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
@@ -210,25 +231,34 @@ ylim([sur_area(1,2), sur_area(2,2)]);
 title('Sensor POV', ...
     'FontSize', 14, ...
     'FontWeight', 'bold');
-legend([sensor_plot,gt1_plot, gt2_plot, z_plot], ...
-    'Sensor', 'Ground truth 1', 'Ground truth 2', 'Measurement', 'Location', 'northeastoutside');
+
+if (hasBirthObj)
+    legend([gt1_plot, gt2_plot, b1_plot, z_plot], ...
+    'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Measurement', ...
+    'Location', 'northeastoutside');
+else
+    legend([gt1_plot, gt2_plot, z_plot], ...
+    'Ground truth 1', 'Ground truth 2', 'Measurement', ...
+    'Location', 'northeastoutside');
+end
 
 figure(2);
 hold on;
 
-for row = 1 : num_of_sensor(2)
-    for col = 1: num_of_sensor(1)
-        sensor = sensor_network(row,col);
-        sensor_plot = plot(sensor.x, sensor.y, '--kx', 'LineWidth', 1.5, 'MarkerSize', 5);
-    end
-end
+gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color',[0.9290 0.6940 0.1250]);
+gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [1 0 0]);
 
-gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
-gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+if (hasBirthObj)
+    b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color',[0.1490 0.9882 0.7216]);
+end
 
 for t = 2:duration
     for k = 1:num_objects(t)
-        est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'bo');
+        est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
+            , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
     end
 end
 
@@ -239,28 +269,59 @@ ylim([sur_area(1,2), sur_area(2,2)]);
 title('Estimation', ...
     'FontSize', 14, ...
     'FontWeight', 'bold');
-legend([sensor_plot,gt1_plot, gt2_plot,est_plot], ...
-    'Sensor', 'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Location', 'northeastoutside');
+
+if (hasBirthObj)
+    legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
+    'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', ...
+    'Location', 'northeastoutside');
+else
+    legend([gt1_plot, gt2_plot, est_plot], ...
+    'Ground truth 1', 'Ground truth 2', 'Estimated State', ...
+    'Location', 'northeastoutside');
+end
 
 %Evaluaion
 ospa = zeros(1, duration);
 ospa_cutoff = 100;
-ospa_order = 1;
+ospa_order = 2;
 
 for t = 2:duration
+
     if (~isempty(est_state{t})) 
         est_mat = est_state{t}(1:2,:);
     else
         est_mat = [];
     end
+    
+    if ~(t > size(gt_1, 2))
+        gt1_mat = gt_1(1:2,t);
+    else
+        gt1_mat = [];
+    end
 
-    ospa(t) = ospa_dist([gt_1(1:2,t), gt_2(1:2,t)], est_mat, ospa_cutoff, ospa_order);
+    if ~(t > size(gt_2, 2))
+        gt2_mat = gt_2(1:2,t);
+    else
+        gt2_mat = [];
+    end
+
+    if (t <= birth_time_1 || t > (birth_time_1 + b_duration_1))
+        b1_mat = [];
+    else
+        b1_mat = birth_gt_1(1:2, t - birth_time_1);
+    end
+    
+    if (hasBirthObj)
+        ospa(t) = ospa_dist([gt1_mat, gt2_mat, b1_mat], est_mat, ospa_cutoff, ospa_order);
+    else
+        ospa(t) = ospa_dist([gt1_mat, gt2_mat], est_mat, ospa_cutoff, ospa_order);
+    end
 end
 
 figure (3);
 hold on;
     
-plot(2:duration, ospa(2:end));
+plot(2:duration, ospa(2:end), 'LineWidth', 1, 'Color', [0 1 1]);
 
 xlabel('Time step');
 ylabel('Distance (in m)');

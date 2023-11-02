@@ -29,6 +29,6 @@ model.P_birth(:,:,1)= diag([100, 100, 25, 25]);
 model.P_birth(:,:,2)= diag([100, 100, 25, 25]);
 
 % Clutter parameters
-model.lambda_c = 10;                                        % clutter rate
+model.lambda_c = 5;                                        % clutter rate
 model.range_c= [-1000 1000; -1000 1000];                    % uniform clutter region
 model.pdf_c= 1/prod(model.range_c(:,2)-model.range_c(:,1)); % uniform clutter density

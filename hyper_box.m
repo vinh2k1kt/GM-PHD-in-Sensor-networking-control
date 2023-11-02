@@ -1,4 +1,4 @@
-function [target_in_box] = Hyper_box(box, target)
+function [target_in_box] = Hyper_box(box, target, duration)
     
     coordinates = target(1:2,:); 
 

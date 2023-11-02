@@ -7,37 +7,27 @@ clc, clear, close all
 
 %% Simulation Setting
 
-loop_time = 100;
+loop_time = 1;
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasMeasNoise = true;
 hasClutter = true;
+hasBirthObj = 0;
 
-doPlotOSPA = true;
-doPlotEstimation = false;
+doPlotOSPA = false;
+doPlotEstimation = true;
+doPlotAverageOspa = false;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 obj_1 = [0;0;1;1];
 obj_2 = [0;1000;1;-1];
 
-%% Generate Sensor Coordination
-
-num_of_sensor = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
-
-cordinates.x = 0;
-cordinates.y = 0;
-
-sensor_network = repmat(cordinates,num_of_sensor(2), num_of_sensor(1));
-
-for row = 1 : num_of_sensor(2)
-    for col = 1: num_of_sensor(1)
-        sensor_network(row,col).x = (col - 1) * sensor_spacing(1);
-        sensor_network(row,col).y = (row -1) * sensor_spacing(2);
-    end
-end
+birth_obj_1 = [500;0;0;2];
+birth_time_1 = 30;
+b_duration_1 = duration - min(duration, birth_time_1);
 
 %% Generate Model
 
@@ -53,6 +43,12 @@ gt_2 = gen_ground_truth('Linear', obj_2, duration,model);
 gt_1 = hyper_box(sur_area, gt_1);
 gt_2 = hyper_box(sur_area, gt_2);
 
+birth_gt_1 = gen_ground_truth('Linear', birth_obj_1, b_duration_1, model);
+
+birth_gt_1 = hyper_box(sur_area, birth_gt_1, b_duration_1);
+
+b_duration_1 = size(birth_gt_1, 2);
+
 %% Average Evaluation Value Initialize
 
 avg_ospa = zeros(loop_time, duration);
@@ -66,15 +62,25 @@ for loop_i = 1 : loop_time
     [z_1, o_num_1] = gen_meas(model, hasMeasNoise, duration, gt_1);
     [z_2, o_num_2] = gen_meas(model, hasMeasNoise, duration, gt_2);
     
+    [b_1, b_num_1] = gen_meas(model, hasMeasNoise, b_duration_1, birth_gt_1);
+    
     % Padding 
+    
     z_1 = [z_1' cell(duration - size(z_1, 1), 1)']';
     z_2 = [z_2' cell(duration - size(z_2, 1), 1)']';
+    
+    b_1 = [cell(birth_time_1, 1)', b_1', cell(duration - b_duration_1 - birth_time_1, 1)']';
     
     %Merging
     
     z = cell(duration, 1);
     for i = 1 : duration
-        z{i} = [z_1{i} z_2{i}];
+    
+        if (hasBirthObj)
+            z{i} = [z_1{i} z_2{i} b_1{i}];
+        else
+            z{i} = [z_1{i} z_2{i}];
+        end
     end
     
     %% Generate Clutter
@@ -199,12 +205,19 @@ for loop_i = 1 : loop_time
     %% Visualize
     
     if (doPlotEstimation)
-
-        figure(1);
-        hold on;
         
-        gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
-        gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+        figure(1);
+        hold on; 
+        
+        gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.9290 0.6940 0.1250]);
+        gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1 0 0]);
+        
+        if (hasBirthObj)
+            b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.1490 0.9882 0.7216]);
+        end
         
         for i = 1 : duration
             z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
@@ -217,18 +230,34 @@ for loop_i = 1 : loop_time
         title('Sensor POV', ...
             'FontSize', 14, ...
             'FontWeight', 'bold');
-        legend([sensor_plot,gt1_plot, gt2_plot, z_plot], ...
-            'Ground truth 1', 'Ground truth 2', 'Measurement', 'Location', 'northeastoutside');
+        
+        if (hasBirthObj)
+            legend([gt1_plot, gt2_plot, b1_plot, z_plot], ...
+            'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Measurement', ...
+            'Location', 'northeastoutside');
+        else
+            legend([gt1_plot, gt2_plot, z_plot], ...
+            'Ground truth 1', 'Ground truth 2', 'Measurement', ...
+            'Location', 'northeastoutside');
+        end
         
         figure(2);
         hold on;
         
-        gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
-        gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--rp', 'LineWidth', 1.5, 'MarkerSize', 2);
+        gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.9290 0.6940 0.1250]);
+        gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1 0 0]);
+        
+        if (hasBirthObj)
+            b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.1490 0.9882 0.7216]);
+        end
         
         for t = 2:duration
             for k = 1:num_objects(t)
-                est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'bo');
+                est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
+                    , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
             end
         end
         
@@ -239,9 +268,16 @@ for loop_i = 1 : loop_time
         title('Estimation', ...
             'FontSize', 14, ...
             'FontWeight', 'bold');
-        legend([sensor_plot,gt1_plot, gt2_plot,est_plot], ...
-            'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Location', 'northeastoutside');
         
+        if (hasBirthObj)
+            legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
+            'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', ...
+            'Location', 'northeastoutside');
+        else
+            legend([gt1_plot, gt2_plot, est_plot], ...
+            'Ground truth 1', 'Ground truth 2', 'Estimated State', ...
+            'Location', 'northeastoutside');
+        end
     end
     
     %Evaluaion
@@ -282,12 +318,14 @@ disp(['-------Total Runtime---------------------Average Runtime---------']);
 disp(['         ', num2str(sum(exec_time, 'all')), ...
     ' (s)                       ', num2str(sum(exec_time, 'all')/loop_time), ' (s)']);
 
-avg_ospa = sum(avg_ospa, 1) / loop_time;
-
-figure(4)
-
-plot(2:duration, avg_ospa(2:duration), 'LineStyle','-','Color','red', 'LineWidth',1.5);
-
-xlabel('Time step');
-ylabel('Distance (in m)');
-title('Average OSPA Evaluation');
+if (doPlotAverageOspa)
+    avg_ospa = sum(avg_ospa, 1) / loop_time;
+    
+    figure(4)
+    
+    plot(2:duration, avg_ospa(2:duration), 'LineStyle','-','Color','red', 'LineWidth',1.5);
+    
+    xlabel('Time step');
+    ylabel('Distance (in m)');
+    title('Average OSPA Evaluation');
+end
