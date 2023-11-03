@@ -15,6 +15,11 @@ hasMeasNoise = true;
 hasClutter = true;
 hasBirthObj = true;
 
+doPlotOSPA = false;
+doPlotEstimation = false;
+doPlotSensorNetwork = false;
+doPlotSensorNetworkProcess = true;
+
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 obj_1 = [0;250;2;0];
@@ -114,6 +119,8 @@ L_update = 1;
 est_state = cell(duration, 1);
 num_objects = zeros(duration, 1);
 
+sensor_pos = [6, 6];
+
 %% Pruning & Merging Parameter Setting
 
 elim_threshold = 1e-5;        % pruning threshold
@@ -196,140 +203,254 @@ for k = 2:duration
         est_state{k} = [est_state{k} m_update{k}(:,i)];
     end
 
-%     %---display diagnostics
-%     disp([' time= ',num2str(k),...
-%          ' #gaus orig=',num2str(L_posterior),...
-%          ' #gaus elim=',num2str(L_prune), ...
-%          ' #gaus merg=',num2str(L_merge), ...
-%          ' #gaus cap=',num2str(L_cap), ...
-%          ' #measurement number=',num2str(n)]);
+    sensor_pos = sensorControl(sensor_pos, est_state{k}, sensor_network);
+    
+    if (doPlotSensorNetworkProcess)
+
+        figure(3);
+        hold on;
+
+        for r = 1 : num_of_sensor(2)
+            for c = 1 : num_of_sensor(1)
+                sensor_plot = plot(sensor_network(r,c).x, sensor_network(r,c).y, '--x' ...
+                , 'LineWidth', 1.5, 'MarkerSize', 5 ...
+                ,'Color', 'black'); 
+            end
+        end
+
+        current_sensor_plot = plot(sensor_network(sensor_pos(1), sensor_pos(2)).x, ...
+                                   sensor_network(sensor_pos(1), sensor_pos(2)).y, ...
+                                   'LineWidth', 1.5, 'MarkerSize', 10, ...
+                                   'MarkerFaceColor', [1 0.4784 0.4784], ...
+                                   'MarkerEdgeColor', 'red', ...
+                                   'Marker', 'diamond');
+
+        if (k <= size(gt_1, 2))
+            gt1_plot = plot(gt_1(1,k), gt_1(2,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.9290 0.6940 0.1250]);
+        end
+        
+        if (k <= size(gt_2, 2))
+            gt2_plot = plot(gt_2(1,k), gt_2(2,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1 0 0]);
+        end
+
+        if (hasBirthObj && k > birth_time_1 && k < birth_time_1 + b_duration_1)
+            b1_plot = plot(birth_gt_1(1,k-birth_time_1), birth_gt_1(2,k-birth_time_1), ...
+             '--o', 'LineWidth', 1.5, 'MarkerSize', 5, ...
+             'Color',[0.1490 0.9882 0.7216]);
+        end
+        
+        for num = 1 : num_objects(k)
+            est_plot = plot(est_state{k}(1, num), est_state{k}(2, num), 'o' ...
+                    , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
+        end
+
+        xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+        ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+        xlim([sur_area(1,1),sur_area(2,1)]);
+        ylim([sur_area(1,2), sur_area(2,2)]);
+        title('Estimation', ...
+            'FontSize', 14, ...
+            'FontWeight','bold');
+
+%         if (hasBirthObj)
+%             legend([gt1_plot, gt2_plot, b1_plot,est_plot, sensor_plot], ...
+%             'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', 'Sensor', ...
+%             'Location', 'northeastoutside');
+%         else
+%             legend([gt1_plot, gt2_plot, est_plot, sensor_plot], ...
+%             'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Sensor', ...
+%             'Location', 'northeastoutside');
+%         end
+
+        %pause(0.05);
+    end
 end
 
 %% Visualize
 
-figure(1);
-hold on; 
-
-for row = 1 : num_of_sensor(2)
-    for col = 1: num_of_sensor(1)
-        
-    end
-end
-
-
-gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color',[0.9290 0.6940 0.1250]);
-gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [1 0 0]);
-
-if (hasBirthObj)
-    b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color',[0.1490 0.9882 0.7216]);
-end
-
-for i = 1 : duration
-    z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
-end
-
-xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
-ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
-xlim([sur_area(1,1),sur_area(2,1)]);
-ylim([sur_area(1,2), sur_area(2,2)]);
-title('Sensor POV', ...
-    'FontSize', 14, ...
-    'FontWeight', 'bold');
-
-if (hasBirthObj)
-    legend([gt1_plot, gt2_plot, b1_plot, z_plot], ...
-    'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Measurement', ...
-    'Location', 'northeastoutside');
-else
-    legend([gt1_plot, gt2_plot, z_plot], ...
-    'Ground truth 1', 'Ground truth 2', 'Measurement', ...
-    'Location', 'northeastoutside');
-end
-
-figure(2);
-hold on;
-
-gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color',[0.9290 0.6940 0.1250]);
-gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [1 0 0]);
-
-if (hasBirthObj)
-    b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color',[0.1490 0.9882 0.7216]);
-end
-
-for t = 2:duration
-    for k = 1:num_objects(t)
-        est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
-            , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
-    end
-end
-
-xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
-ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
-xlim([sur_area(1,1),sur_area(2,1)]);
-ylim([sur_area(1,2), sur_area(2,2)]);
-title('Estimation', ...
-    'FontSize', 14, ...
-    'FontWeight','bold');
-
-if (hasBirthObj)
-    legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
-    'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', ...
-    'Location', 'northeastoutside');
-else
-    legend([gt1_plot, gt2_plot, est_plot], ...
-    'Ground truth 1', 'Ground truth 2', 'Estimated State', ...
-    'Location', 'northeastoutside');
-end
-
-%Evaluaion
-ospa = zeros(1, duration);
-ospa_cutoff = 100;
-ospa_order = 2;
-
-for t = 2:duration
-
-    if (~isempty(est_state{t})) 
-        est_mat = est_state{t}(1:2,:);
-    else
-        est_mat = [];
+if (doPlotEstimation)
+    figure(1);
+    
+    hold on; 
+    
+    for row = 1 : num_of_sensor(2)
+        for col = 1: num_of_sensor(1)
+            
+        end
     end
     
-    if ~(t > size(gt_1, 2))
-        gt1_mat = gt_1(1:2,t);
-    else
-        gt1_mat = [];
-    end
-
-    if ~(t > size(gt_2, 2))
-        gt2_mat = gt_2(1:2,t);
-    else
-        gt2_mat = [];
-    end
-
-    if (t <= birth_time_1 || t > (birth_time_1 + b_duration_1))
-        b1_mat = [];
-    else
-        b1_mat = birth_gt_1(1:2, t - birth_time_1);
-    end
+    
+    gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.9290 0.6940 0.1250]);
+    gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color', [1 0 0]);
     
     if (hasBirthObj)
-        ospa(t) = ospa_dist([gt1_mat, gt2_mat, b1_mat], est_mat, ospa_cutoff, ospa_order);
+        b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.1490 0.9882 0.7216]);
+    end
+    
+    for i = 1 : duration
+        z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
+    end
+    
+    xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+    ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+    xlim([sur_area(1,1),sur_area(2,1)]);
+    ylim([sur_area(1,2), sur_area(2,2)]);
+    title('Sensor POV', ...
+        'FontSize', 14, ...
+        'FontWeight', 'bold');
+    
+    if (hasBirthObj)
+        legend([gt1_plot, gt2_plot, b1_plot, z_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Measurement', ...
+        'Location', 'northeastoutside');
     else
-        ospa(t) = ospa_dist([gt1_mat, gt2_mat], est_mat, ospa_cutoff, ospa_order);
+        legend([gt1_plot, gt2_plot, z_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Measurement', ...
+        'Location', 'northeastoutside');
+    end
+    
+    figure(2);
+    hold on;
+    
+    gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.9290 0.6940 0.1250]);
+    gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color', [1 0 0]);
+    
+    if (hasBirthObj)
+        b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.1490 0.9882 0.7216]);
+    end
+    
+    for t = 2:duration
+        for k = 1:num_objects(t)
+            est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
+                , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
+        end
+    end
+    
+    xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+    ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+    xlim([sur_area(1,1),sur_area(2,1)]);
+    ylim([sur_area(1,2), sur_area(2,2)]);
+    title('Estimation', ...
+        'FontSize', 14, ...
+        'FontWeight','bold');
+    
+    if (hasBirthObj)
+        legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', ...
+        'Location', 'northeastoutside');
+    else
+        legend([gt1_plot, gt2_plot, est_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Estimated State', ...
+        'Location', 'northeastoutside');
+    end
+
+end
+
+if (doPlotSensorNetwork)
+    
+    figure(3);
+    hold on;
+
+    for r = 1 : num_of_sensor(2)
+        for c = 1 : num_of_sensor(1)
+            sensor_plot = plot(sensor_network(r,c).x, sensor_network(r,c).y, '--x' ...
+            , 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', 'black');
+        end
+    end
+    
+        gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.9290 0.6940 0.1250]);
+        gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color', [1 0 0]);
+    
+    if (hasBirthObj)
+        b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        ,'Color',[0.1490 0.9882 0.7216]);
+    end
+    
+    for t = 2:duration
+        for k = 1:num_objects(t)
+            est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
+                , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
+        end
+    end
+    
+    xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
+    ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
+    xlim([sur_area(1,1),sur_area(2,1)]);
+    ylim([sur_area(1,2), sur_area(2,2)]);
+    title('Estimation', ...
+        'FontSize', 14, ...
+        'FontWeight','bold');
+    
+    if (hasBirthObj)
+        legend([gt1_plot, gt2_plot, b1_plot,est_plot, sensor_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', 'Sensor', ...
+        'Location', 'northeastoutside');
+    else
+        legend([gt1_plot, gt2_plot, est_plot, sensor_plot], ...
+        'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Sensor', ...
+        'Location', 'northeastoutside');
     end
 end
 
-figure (3);
-hold on;
-    
-plot(2:duration, ospa(2:end), 'LineWidth', 1, 'Color', [0 1 1]);
+%% Evaluaion
 
-xlabel('Time step');
-ylabel('Distance (in m)');
-title('OSPA Evaluation', 'FontWeight', 'bold');
+if (doPlotOSPA)
+
+    ospa = zeros(1, duration);
+    ospa_cutoff = 100;
+    ospa_order = 2;
+    
+    for t = 2:duration
+    
+        if (~isempty(est_state{t})) 
+            est_mat = est_state{t}(1:2,:);
+        else
+            est_mat = [];
+        end
+        
+        if ~(t > size(gt_1, 2))
+            gt1_mat = gt_1(1:2,t);
+        else
+            gt1_mat = [];
+        end
+    
+        if ~(t > size(gt_2, 2))
+            gt2_mat = gt_2(1:2,t);
+        else
+            gt2_mat = [];
+        end
+    
+        if (t <= birth_time_1 || t > (birth_time_1 + b_duration_1))
+            b1_mat = [];
+        else
+            b1_mat = birth_gt_1(1:2, t - birth_time_1);
+        end
+        
+        if (hasBirthObj)
+            ospa(t) = ospa_dist([gt1_mat, gt2_mat, b1_mat], est_mat, ospa_cutoff, ospa_order);
+        else
+            ospa(t) = ospa_dist([gt1_mat, gt2_mat], est_mat, ospa_cutoff, ospa_order);
+        end
+    end
+    
+    figure (4);
+    hold on;
+        
+    plot(2:duration, ospa(2:end), 'LineWidth', 1, 'Color', [0 1 1]);
+    
+    xlabel('Time step');
+    ylabel('Distance (in m)');
+    title('OSPA Evaluation', 'FontWeight', 'bold');
+
+end
