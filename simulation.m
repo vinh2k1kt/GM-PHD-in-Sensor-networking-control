@@ -110,7 +110,7 @@ end
 
 %% Prior Initialze
 
-w_update{1} = [0.5];
+w_update{1} = 0.5;
 
 m_update{1}(:, 1) = [1000; 1000; 10; 10];
 P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
@@ -121,7 +121,7 @@ est_cov = cell(duration, 1);
 est_w = cell(duration, 1);
 num_objects = zeros(duration, 1);
 
-sensor_index = [6, 6];
+sensor_index = [1, 1];
 
 %% Pruning & Merging Parameter Setting
 
