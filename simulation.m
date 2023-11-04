@@ -16,7 +16,7 @@ hasClutter = true;
 hasBirthObj = true;
 
 doPlotOSPA = false;
-doPlotEstimation = false;
+doPlotEstimation = true;
 doPlotSensorNetwork = false;
 doPlotSensorNetworkProcess = true;
 
@@ -56,12 +56,12 @@ model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 gt_1 = gen_ground_truth('Linear',obj_1,duration,model);
 gt_2 = gen_ground_truth('Linear', obj_2, duration,model);
 
-gt_1 = hyper_box(sur_area, gt_1, duration);
-gt_2 = hyper_box(sur_area, gt_2, duration);
+gt_1 = hyper_box(sur_area, gt_1);
+gt_2 = hyper_box(sur_area, gt_2);
 
 birth_gt_1 = gen_ground_truth('Linear', birth_obj_1, b_duration_1, model);
 
-birth_gt_1 = hyper_box(sur_area, birth_gt_1, b_duration_1);
+birth_gt_1 = hyper_box(sur_area, birth_gt_1);
 
 b_duration_1 = size(birth_gt_1, 2);
 
@@ -117,9 +117,11 @@ P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
 L_update = 1;
 est_state = cell(duration, 1);
+est_cov = cell(duration, 1);
+est_w = cell(duration, 1);
 num_objects = zeros(duration, 1);
 
-sensor_pos = [6, 6];
+sensor_index = [6, 6];
 
 %% Pruning & Merging Parameter Setting
 
@@ -200,10 +202,14 @@ for k = 2:duration
     end
 
     for i = 1:size(indices,2)
+        est_cov{k} = [cat(3, est_cov{k}, P_update{k}(:,:,i))];
         est_state{k} = [est_state{k} m_update{k}(:,i)];
+        est_w{k} = [est_w{k} w_update{k}(i,:)];
     end
 
-    sensor_pos = sensorControl(sensor_pos, est_state{k}, sensor_network);
+    %sensor_index = sensorControl(sensor_index, est_state{k}, sensor_network);
+    sensor_index = void_prob_rec(sensor_index, sensor_network, est_w{k}, ...
+                                 est_state{k}, est_cov{k}, sur_area);
     
     if (doPlotSensorNetworkProcess)
 
@@ -218,8 +224,8 @@ for k = 2:duration
             end
         end
 
-        current_sensor_plot = plot(sensor_network(sensor_pos(1), sensor_pos(2)).x, ...
-                                   sensor_network(sensor_pos(1), sensor_pos(2)).y, ...
+        current_sensor_plot = plot(sensor_network(sensor_index(1), sensor_index(2)).x, ...
+                                   sensor_network(sensor_index(1), sensor_index(2)).y, ...
                                    'LineWidth', 1.5, 'MarkerSize', 10, ...
                                    'MarkerFaceColor', [1 0.4784 0.4784], ...
                                    'MarkerEdgeColor', 'red', ...
@@ -264,7 +270,7 @@ for k = 2:duration
 %             'Location', 'northeastoutside');
 %         end
 
-        %pause(0.05);
+        pause(0.01);
     end
 end
 
