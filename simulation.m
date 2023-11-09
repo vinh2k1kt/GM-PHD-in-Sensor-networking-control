@@ -9,23 +9,24 @@ clc, clear, close all
 
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
-sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
+sensor_spacing = [100; 100];   %Space between each sensor [x_space; y_space]
 
 hasMeasNoise = true;
 hasClutter = true;
-hasBirthObj = true;
+hasBirthObj = false;
 
 doPlotOSPA = false;
 doPlotEstimation = true;
 doPlotSensorNetwork = false;
-doPlotSensorNetworkProcess = true;
+doPlotSensorNetworkProcess =true;
+doPlotVoidProb = false;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 obj_1 = [0;250;2;0];
-obj_2 = [0;750;2;0];
+obj_2 = [0;500;2;0];
 
-birth_obj_1 = [750;0;0;2];
+birth_obj_1 = [500;0;0;2];
 birth_time_1 = 30;
 b_duration_1 = duration - min(duration, birth_time_1);
 
@@ -119,9 +120,12 @@ L_update = 1;
 est_state = cell(duration, 1);
 est_cov = cell(duration, 1);
 est_w = cell(duration, 1);
-num_objects = zeros(duration, 1);
 
-sensor_index = [1, 1];
+num_objects = zeros(duration, 1);
+void_prob = zeros(duration, 1);
+void_prob_matrix = cell(duration, 1);
+
+sensor_trajectory = repmat([1;1],1,duration);
 
 %% Pruning & Merging Parameter Setting
 
@@ -191,7 +195,6 @@ for k = 2:duration
     
     %% Estimate object state
     num_objects(k) = round(sum(w_update{k}));
-    num_targets = num_objects(k);
     w_copy = w_update{k};
     indices = [];
 
@@ -202,15 +205,17 @@ for k = 2:duration
     end
 
     for i = 1:size(indices,2)
-        est_cov{k} = [cat(3, est_cov{k}, P_update{k}(:,:,i))];
-        est_state{k} = [est_state{k} m_update{k}(:,i)];
-        est_w{k} = [est_w{k} w_update{k}(i,:)];
+        est_cov{k} = [cat(3, est_cov{k}, P_update{k}(:,:,indices(i)))];
+        est_state{k} = [est_state{k} m_update{k}(:,indices(i))];
+        est_w{k} = [est_w{k} w_update{k}(indices(i),:)];
     end
 
-    %sensor_index = sensorControl(sensor_index, est_state{k}, sensor_network);
-    sensor_index = void_prob_rec(sensor_index, sensor_network, est_w{k}, ...
+    [sensor_trajectory(:,k), min_void_probability, void_matrix] = void_prob_rec(sensor_trajectory(:,k-1), sensor_network, est_w{k}, ...
                                  est_state{k}, est_cov{k}, sur_area);
     
+    void_prob(k) = min_void_probability;
+    void_prob_matrix{k} = void_matrix;
+
     if (doPlotSensorNetworkProcess)
 
         figure(3);
@@ -223,9 +228,10 @@ for k = 2:duration
                 ,'Color', 'black'); 
             end
         end
-
-        current_sensor_plot = plot(sensor_network(sensor_index(1), sensor_index(2)).x, ...
-                                   sensor_network(sensor_index(1), sensor_index(2)).y, ...
+        
+        current_pos = sensor_trajectory(:,k);
+        current_sensor_plot = plot(sensor_network(current_pos(1), current_pos(2)).x, ...
+                                   sensor_network(current_pos(1), current_pos(2)).y, ...
                                    'LineWidth', 1.5, 'MarkerSize', 10, ...
                                    'MarkerFaceColor', [1 0.4784 0.4784], ...
                                    'MarkerEdgeColor', 'red', ...
@@ -459,4 +465,14 @@ if (doPlotOSPA)
     ylabel('Distance (in m)');
     title('OSPA Evaluation', 'FontWeight', 'bold');
 
+end
+
+if (doPlotVoidProb)
+
+    figure(5);
+    plot(void_prob, 'LineWidth', 1, 'Color', 'red');
+
+    xlabel('Time step');
+    ylabel('Void Probability');
+    title('Void Probability', 'FontWeight', 'bold');
 end

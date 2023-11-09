@@ -24,7 +24,7 @@ model.m_birth= zeros(model.x_dim,model.L_birth);                      %means of 
 model.P_birth= zeros(model.x_dim,model.x_dim,model.L_birth);          %cov of Gaussian birth terms
 
 model.w_birth= repmat(.01, model.L_birth, 1);                                            %birth of simulation (example 1)
-model.m_birth= [ [0; 250; 0; 0] [0; 750; 0; 0] [250; 0; 0; 0] [750; 0; 0; 0]];
+model.m_birth= [ [0; 250; 0; 0] [0; 500; 0; 0] [250; 0; 0; 0] [500; 0; 0; 0]];
 
 model.P_birth(:,:,:)= repmat(diag([200^2, 200^2, 25, 25]),1,1,model.L_birth);
 

@@ -1,9 +1,11 @@
-function otp_pos = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area)
+function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area)
    
     avaiable_sensor = findNeighbour(sensor_index, sensor_network);
-
+    
     min_void_probability = inf;
     
+    void_prob_matrix = Inf(size(avaiable_sensor,1), size(avaiable_sensor,2));
+
     if (~isempty(m))
         for row = 1 : size(avaiable_sensor, 1)
             for col = 1 : size(avaiable_sensor, 2)
@@ -13,7 +15,7 @@ function otp_pos = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area
                 sensor_pos = [avaiable_sensor(row,col).x, avaiable_sensor(row,col).y];
                 
                 % Rec Size [x_min y_min; x_max y_max] 
-                rec_size = sur_area(2,:) / 2; 
+                rec_size = sur_area(2,:) / 20; 
 
                 rec_bound = [-rec_size(:,1)/2, -rec_size(:,2)/2; rec_size(:,1)/2, rec_size(:,2)/2];
                 
@@ -35,8 +37,8 @@ function otp_pos = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area
                 for x_i = 1 : x_step
                     for y_i = 1 : y_step
                         
-                        x = rec_coordinate(1,1) + x_i * delta_x;
-                        y = rec_coordinate(1,2) + y_i * delta_y;
+                        x = rec_coordinate(1,1) + (x_i + 0.5) * delta_x;
+                        y = rec_coordinate(1,2) + (y_i + 0.5) * delta_y;
             
                         r_ij = [x;y];
 
@@ -46,12 +48,14 @@ function otp_pos = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area
                 
                 void_prob = exp(-integral);
 
+                void_prob_matrix(row, col) = void_prob; 
+
                 if (void_prob <= min_void_probability)
 
                     min_void_probability = void_prob;
                     
-                    otp_pos = [avaiable_sensor(row,col).y/50 + 1, ...
-                               avaiable_sensor(row,col).x/50 + 1];
+                    otp_pos = [avaiable_sensor(row,col).y/100 + 1, ...
+                               avaiable_sensor(row,col).x/100 + 1]';
                 end
             end
         end
@@ -71,9 +75,10 @@ function [intensity_val] = intensity(r_ij, w, m, P)
     P = P(1:D,1:D,:);
 
     intensity_val = 0;
+
     for i = 1 : size(m,2)
-        gaussian_distribution = w * (2*pi)^(-0.5*D)*det(P(1:D,1:D,i))*...
-            exp(-0.5*(r_ij - m(1:D,i))' * 1/P(1:D,1:D,i) * (r_ij - m(1:D,i)));
+        gaussian_distribution = w(i) * (2*pi)^(-D/2)*det(P(:,:,i))^(-0.5)*...
+            exp(-0.5*(r_ij - m(:,i))' * 1/P(:,:,i) * (r_ij - m(:,i)));
 
         intensity_val = intensity_val + gaussian_distribution;
     end
