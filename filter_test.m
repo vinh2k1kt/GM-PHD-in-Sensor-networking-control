@@ -7,25 +7,25 @@ clc, clear, close all
 
 %% Simulation Setting
 
-loop_time = 50;
+loop_time = 1;
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasMeasNoise = true;
 hasClutter = true;
-hasBirthObj = true;
+hasBirthObj = false;
 
 doPlotOSPA = true;
-doPlotEstimation = false;
-doPlotAverageOspa = true;
+doPlotEstimation = true;
+doPlotAverageOspa = false;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 obj_1 = [0;250;2;0];
-obj_2 = [0;800;2;0];
+obj_2 = [0;500;2;0];
 
-birth_obj_1 = [750;0;0;2];
+birth_obj_1 = [500;0;0;2];
 birth_time_1 = 30;
 b_duration_1 = duration - min(duration, birth_time_1);
 
@@ -45,7 +45,7 @@ gt_2 = hyper_box(sur_area, gt_2);
 
 birth_gt_1 = gen_ground_truth('Linear', birth_obj_1, b_duration_1, model);
 
-birth_gt_1 = hyper_box(sur_area, birth_gt_1, b_duration_1);
+birth_gt_1 = hyper_box(sur_area, birth_gt_1);
 
 b_duration_1 = size(birth_gt_1, 2);
 

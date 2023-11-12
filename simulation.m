@@ -18,7 +18,7 @@ hasBirthObj = false;
 doPlotOSPA = false;
 doPlotEstimation = true;
 doPlotSensorNetwork = false;
-doPlotSensorNetworkProcess =true;
+doPlotSensorNetworkProcess = false;
 doPlotVoidProb = false;
 
 %% Object Setting (obj_k = [x;y;vx;vy])
@@ -111,8 +111,11 @@ end
 
 %% Prior Initialze
 
-w_update{1} = 0.5;
+w_update = cell(duration, 1);
+m_update = cell(duration, 1);
+P_update = cell(duration, 1);
 
+w_update{1} = 0.5;
 m_update{1}(:, 1) = [1000; 1000; 10; 10];
 P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
@@ -125,26 +128,26 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-sensor_trajectory = repmat([1;1],1,duration);
+sensor_trajectory = repmat([num_of_sensor(1);num_of_sensor(2)],1,duration);
+
+%% Initial Prediction
+
+[m_predict, P_predict] = predict_KF(model, m_update{1}, P_update{1});
+w_predict = model.P_S * w_update{1};
+
+w_predict = cat(1, model.w_birth, w_predict);
+m_predict = cat(2, model.m_birth, m_predict);
+P_predict = cat(3, model.P_birth, P_predict);
 
 %% Pruning & Merging Parameter Setting
 
-elim_threshold = 1e-5;        % pruning threshold
+elim_threshold = 1e-3;        % pruning threshold
 merge_threshold = 4;          % merging threshold
 L_max = 100;                  % limit on number of Gaussian components
 
 %% Recursion
 
-for k = 2:duration
-
-    %% Predict
-
-    [m_predict, P_predict] = predict_KF(model, m_update{k-1}, P_update{k-1});
-    w_predict = model.P_S * w_update{k-1};
-
-    w_predict = cat(1, model.w_birth, w_predict);
-    m_predict = cat(2, model.m_birth, m_predict);
-    P_predict = cat(3, model.P_birth, P_predict);
+for k = 1:duration
 
     %% Update
     n = size(z{k},2);       %number of measurement
@@ -163,7 +166,7 @@ for k = 2:duration
 
             % Calculate detection weight of each probable object detect
             w_temp = model.P_D * w_predict .* likelihood_tmp(:,i);
-
+            
             if (hasClutter)
                 w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
             else
@@ -178,7 +181,6 @@ for k = 2:duration
             P_update{k} = cat(3,P_update{k},P_temp);
         end
     end
-
 
     %---mixture management
     L_posterior= length(w_update{k});
@@ -210,8 +212,20 @@ for k = 2:duration
         est_w{k} = [est_w{k} w_update{k}(indices(i),:)];
     end
 
-    [sensor_trajectory(:,k), min_void_probability, void_matrix] = void_prob_rec(sensor_trajectory(:,k-1), sensor_network, est_w{k}, ...
-                                 est_state{k}, est_cov{k}, sur_area);
+    %% Predict
+
+    [m_predict, P_predict] = predict_KF(model, m_update{k}, P_update{k});
+    w_predict = model.P_S * w_update{k};
+
+    w_predict = cat(1, model.w_birth, w_predict);
+    m_predict = cat(2, model.m_birth, m_predict);
+    P_predict = cat(3, model.P_birth, P_predict);
+
+    %% Calculate next optimize sensor position
+
+
+    [sensor_trajectory(:,k+1), min_void_probability, void_matrix] = void_prob_rec(sensor_trajectory(:,k),...
+     sensor_network, w_predict,m_predict, P_predict, sur_area, sensor_spacing);
     
     void_prob(k) = min_void_probability;
     void_prob_matrix{k} = void_matrix;
@@ -265,16 +279,6 @@ for k = 2:duration
         title('Estimation', ...
             'FontSize', 14, ...
             'FontWeight','bold');
-
-%         if (hasBirthObj)
-%             legend([gt1_plot, gt2_plot, b1_plot,est_plot, sensor_plot], ...
-%             'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', 'Sensor', ...
-%             'Location', 'northeastoutside');
-%         else
-%             legend([gt1_plot, gt2_plot, est_plot, sensor_plot], ...
-%             'Ground truth 1', 'Ground truth 2', 'Estimated State', 'Sensor', ...
-%             'Location', 'northeastoutside');
-%         end
 
         pause(0.01);
     end

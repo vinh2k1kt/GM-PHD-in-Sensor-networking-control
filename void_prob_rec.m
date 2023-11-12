@@ -1,4 +1,4 @@
-function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area)
+function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area, sensor_spacing)
    
     avaiable_sensor = findNeighbour(sensor_index, sensor_network);
     
@@ -15,7 +15,7 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
                 sensor_pos = [avaiable_sensor(row,col).x, avaiable_sensor(row,col).y];
                 
                 % Rec Size [x_min y_min; x_max y_max] 
-                rec_size = sur_area(2,:) / 20; 
+                rec_size = sur_area(2,:) / 40; 
 
                 rec_bound = [-rec_size(:,1)/2, -rec_size(:,2)/2; rec_size(:,1)/2, rec_size(:,2)/2];
                 
@@ -50,12 +50,12 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
 
                 void_prob_matrix(row, col) = void_prob; 
 
-                if (void_prob <= min_void_probability)
+                if (void_prob < min_void_probability)
 
                     min_void_probability = void_prob;
                     
-                    otp_pos = [avaiable_sensor(row,col).y/100 + 1, ...
-                               avaiable_sensor(row,col).x/100 + 1]';
+                    otp_pos = [avaiable_sensor(row,col).y/sensor_spacing(2) + 1, ...
+                               avaiable_sensor(row,col).x/sensor_spacing(1) + 1]';
                 end
             end
         end
@@ -67,7 +67,7 @@ end
 function [intensity_val] = intensity(r_ij, w, m, P)
 
     % p(x|m,P) = N(m,P) =
-    % (2pi)^(-D/2)*det(P)^(-1/2) * exp(-1/2*(x-m)' * P' * (x-m))
+    % (2pi)^(-D/2)*det(P)^(-1/2) * exp(-1/2*(x-m)' * P^(-1) * (x-m))
 
     D = size(r_ij,1); %Dimension;
     
