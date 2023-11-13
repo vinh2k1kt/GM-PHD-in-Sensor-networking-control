@@ -89,9 +89,22 @@ m_update = cell(duration, 1);
 P_update = cell(duration, 1);
 P_D = cell(duration, 1);
 
-w_update{1} = 0.5;
-m_update{1}(:, 1) = [1000; 1000; 10; 10];
-P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
+row_d = 4;
+col_d = 4;
+delta_r = sur_area(2,2)/row_d;
+delta_c = sur_area(2,1)/col_d;
+
+for r = 1 : row_d 
+    for c = 1 : col_d
+        idx = (r-1)*row_d + c;
+        w_update{1}(idx, :) = 0.5 / (row_d * col_d);
+        m_update{1}(:,idx) = [(r * delta_r)/2; (c*delta_c)/2; 10; 10];
+        P_update{1}(:, :, idx) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
+    end
+end
+% w_update{1} = 0.5;
+% m_update{1}(:, 1) = [1000; 1000; 10; 10];
+% P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
 L_update = 1;
 est_state = cell(duration, 1);
@@ -102,8 +115,8 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-sensor_traj = repmat([sensor_num(2);sensor_num(1)],1,duration);
-% sensor_traj = repmat([15;15],1,duration);
+%sensor_traj = repmat([sensor_num(2);sensor_num(1)],1,duration);
+ sensor_traj = repmat([1;1],1,duration);
 
 %% Initial Prediction
 
@@ -125,20 +138,22 @@ L_max = 100;                  % limit on number of Gaussian components
 for k = 1:duration
     
     sensor_pos = sensor_network(sensor_traj(1,k), sensor_traj(2,k)).pos;
-    [z, P_D{k}] = get_meas(sensor_pos, gt(:,:,k),model,clutter{k});
-    
+    [z, P_D{k}, t_dtd] = get_meas(sensor_pos, gt(:,:,k),model,clutter{k});
+    %P_D{k} = P_D{k}(:,t_dtd);
+
     %% Update
     n = size(z,2);       %number of measurement
 
     % Miss Detection Hypothesis
-
+    
     diff = repmat(sensor_pos,1,size(m_predict(1:2,:),2)) - m_predict(1:2,:);
     P_D_predict = zeros(1,size(m_predict(1:2,:),2));
     for idx = 1 : size(P_D_predict,2)
         P_D_predict(:,idx) = exp(-.5*diff(:,idx)'*model.P_D_cov_inv*diff(:,idx));
     end
 
-    w_update{k} = model.P_MD*w_predict;
+    w_update{k} = (1-P_D_predict)'.*w_predict;
+    %w_update{k} = (1-P_D{k})*w_predict;
     m_update{k} = m_predict;
     P_update{k} = P_predict;
 
@@ -157,7 +172,8 @@ for k = 1:duration
             end
     
             % Calculate detection weight of each probable object detect
-            w_temp = P_D_temp * w_predict .* likelihood_tmp(:,i);
+            w_temp = P_D_temp' .* w_predict .* likelihood_tmp(:,i);
+            %w_temp = P_D{k}' .* w_predict .* likelihood_tmp(:,i);
             
             if (hasClutter)
                 w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
