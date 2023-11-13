@@ -3,7 +3,7 @@ function model = gen_model
 % Transition Model
 model.x_dim = 4;     % x dimension
 model.z_dim = 2;     % z dimension
-model.dt = 10;       % sampling period
+model.dt = 1;       % sampling period
 
 % Surviving/Death Parameters
 model.P_S = 0.99;     % Surviving Probability
@@ -20,7 +20,7 @@ model.P_D_cov(1,2)*model.P_D_cov(2,1);
 model.F = [1 0 model.dt 0; 0 1 0 model.dt; 0 0 1 0; 0 0 0 1]; % Transition Model
 model.H = [1 0 0 0; 0 1 0 0];                                 % Measurement Model
 model.Q = [3 0 0 0; 0 2.5 0 0; 0 0 2 0; 0 0 0 1];             % Transiion Noise Covariance
-model.R = 5 * [.5 0; 0 .65];                                 % Measurement Noise Covariance
+model.R = 5 * [.5 0; 0 .65];                                  % Measurement Noise Covariance
 
 % Birth parameters
 model.L_birth = 3;
@@ -28,7 +28,7 @@ model.w_birth= zeros(model.L_birth,1);                                %weights o
 model.m_birth= zeros(model.x_dim,model.L_birth);                      %means of Gaussian birth terms 
 model.P_birth= zeros(model.x_dim,model.x_dim,model.L_birth);          %cov of Gaussian birth terms
 
-model.w_birth= repmat(.05, model.L_birth, 1);                                            %birth of simulation (example 1)
+model.w_birth= repmat(.01, model.L_birth, 1);                                            %birth of simulation (example 1)
 model.m_birth= [ [0; 250; 0; 0] [0; 500; 0; 0] [500; 0; 0; 0]];
 
 model.P_birth(:,:,:)= repmat(diag([100, 100, 25, 25]),1,1,model.L_birth);

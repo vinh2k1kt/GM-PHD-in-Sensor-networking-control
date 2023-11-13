@@ -1,10 +1,10 @@
 function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area, sensor_spacing)
    
     avaiable_sensor = findNeighbour(sensor_index, sensor_network);
+    otp_pos = sensor_index;
+    min_void_probability = 1;
     
-    min_void_probability = inf;
-    
-    void_prob_matrix = Inf(size(avaiable_sensor,1), size(avaiable_sensor,2));
+    void_prob_matrix = ones(size(avaiable_sensor,1), size(avaiable_sensor,2));
 
     if (~isempty(m))
         for row = 1 : size(avaiable_sensor, 1)
@@ -12,7 +12,7 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
 
                 integral = 0;
 
-                sensor_pos = [avaiable_sensor(row,col).x, avaiable_sensor(row,col).y];
+                sensor_pos = avaiable_sensor(row,col).pos;
                 
                 % Rec Size [x_min y_min; x_max y_max] 
                 rec_size = sur_area(2,:) / 40; 
@@ -20,8 +20,8 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
                 rec_bound = [-rec_size(:,1)/2, -rec_size(:,2)/2; rec_size(:,1)/2, rec_size(:,2)/2];
                 
                 % Shifting Rec_Coordinate By Sensor Pos
-                rec_coordinate = [rec_bound(:,1) + sensor_pos(:,1), rec_bound(:,2) ...
-                                  + sensor_pos(:,2)];
+                rec_coordinate = [rec_bound(:,1) + sensor_pos(1,:), rec_bound(:,1) ...
+                                  + sensor_pos(2,:)];
             
                 % x_min <= x <= x_max
                 % y_min <= y <= y_max
@@ -54,8 +54,7 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
 
                     min_void_probability = void_prob;
                     
-                    otp_pos = [avaiable_sensor(row,col).y/sensor_spacing(2) + 1, ...
-                               avaiable_sensor(row,col).x/sensor_spacing(1) + 1]';
+                    otp_pos = [1;1]+flipud(avaiable_sensor(row,col).pos)./sensor_spacing;
                 end
             end
         end

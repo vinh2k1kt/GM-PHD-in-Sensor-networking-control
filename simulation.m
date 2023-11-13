@@ -9,40 +9,29 @@ clc, clear, close all
 
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
-sensor_spacing = [100; 100];   %Space between each sensor [x_space; y_space]
+sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
-hasMeasNoise = true;
 hasClutter = true;
 hasBirthObj = false;
 
 doPlotOSPA = false;
-doPlotEstimation = true;
+doPlotEstimation = false;
 doPlotSensorNetwork = false;
-doPlotSensorNetworkProcess = false;
+doPlotSensorNetworkProcess = true;
 doPlotVoidProb = false;
-
-%% Object Setting (obj_k = [x;y;vx;vy])
-
-obj_1 = [0;250;2;0];
-obj_2 = [0;500;2;0];
-
-birth_obj_1 = [500;0;0;2];
-birth_time_1 = 30;
-b_duration_1 = duration - min(duration, birth_time_1);
 
 %% Generate Sensor Coordination
 
-num_of_sensor = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
+sensor_num = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
 
-cordinates.x = 0;
-cordinates.y = 0;
+sensor.pos = 0;
 
-sensor_network = repmat(cordinates,num_of_sensor(2), num_of_sensor(1));
+sensor_network = repmat(sensor,sensor_num(2), sensor_num(1));
 
-for row = 1 : num_of_sensor(2)
-    for col = 1: num_of_sensor(1)
-        sensor_network(row,col).x = (col - 1) * sensor_spacing(1);
-        sensor_network(row,col).y = (row -1) * sensor_spacing(2);
+for row = 1 : sensor_num(2)
+    for col = 1: sensor_num(1)
+        sensor_network(row,col).pos = ...
+            [(col - 1) * sensor_spacing(1);(row -1) * sensor_spacing(2)];
     end
 end
 
@@ -52,45 +41,33 @@ model = gen_model;
 model.range_c = sur_area;
 model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 
+
+%% Object Setting (obj_k = [x;y;vx;vy])
+
+t_die = 19;
+
+obj_1 = [800; 600; -.3; -1.8];
+obj_2 = [650; 500; -.4; 1.1];
+obj_3 = [600; 720; .75; -1.5];
+obj_4 = [700; 700; 1.7; .2];
+obj_5 = [750; 800; 1.6; -1.2];
+
+obj = cat(2,obj_1, obj_2);
+
+tar_status = true(size(obj,2), duration);
+tar_status(size(obj,2),t_die+1:end) = false;
+
 %% Generate Ground Truth
 
-gt_1 = gen_ground_truth('Linear',obj_1,duration,model);
-gt_2 = gen_ground_truth('Linear', obj_2, duration,model);
+gt = zeros(size(obj,1), size(obj,2), duration);
 
-gt_1 = hyper_box(sur_area, gt_1);
-gt_2 = hyper_box(sur_area, gt_2);
-
-birth_gt_1 = gen_ground_truth('Linear', birth_obj_1, b_duration_1, model);
-
-birth_gt_1 = hyper_box(sur_area, birth_gt_1);
-
-b_duration_1 = size(birth_gt_1, 2);
-
-%% Generate Measurement
-
-[z_1, o_num_1] = gen_meas(model, hasMeasNoise, duration, gt_1);
-[z_2, o_num_2] = gen_meas(model, hasMeasNoise, duration, gt_2);
-
-[b_1, b_num_1] = gen_meas(model, hasMeasNoise, b_duration_1, birth_gt_1);
-
-% Padding 
-
-z_1 = [z_1' cell(duration - size(z_1, 1), 1)']';
-z_2 = [z_2' cell(duration - size(z_2, 1), 1)']';
-
-b_1 = [cell(birth_time_1, 1)', b_1', cell(duration - b_duration_1 - birth_time_1, 1)']';
-
-%Merging
-
-z = cell(duration, 1);
-for i = 1 : duration
-
-    if (hasBirthObj)
-        z{i} = [z_1{i} z_2{i} b_1{i}];
-    else
-        z{i} = [z_1{i} z_2{i}];
-    end
-end
+[gt(:,1,:), tar_status(1,:)] = gen_ground_truth('Linear', obj_1, duration,model, sur_area);
+[gt(:,2,:), tar_status(2,:)] = gen_ground_truth('Linear', obj_2, duration,model, sur_area);
+[gt(:,3,:), tar_status(3,:)] = gen_ground_truth('Linear', obj_3, duration,model, sur_area);
+[gt(:,4,:), tar_status(4,:)] = gen_ground_truth('Linear', obj_4, duration,model, sur_area);
+[gt(:,5,:), tar_status(5,:)] = gen_ground_truth('Linear', obj_5, duration,model, sur_area);
+    
+tar_status(5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = false;
 
 %% Generate Clutter
 
@@ -98,15 +75,11 @@ clutter_num = zeros(1, duration);
 clutter = cell(duration, 1);
 
 if (hasClutter)
-
     for i = 1 : duration
         clutter_num(i) = poissrnd(model.lambda_c);
         clutter{i} = [unifrnd(model.range_c(1,1), model.range_c(2,1), 1, clutter_num(i))
-                       unifrnd(model.range_c(1,2), model.range_c(2,2), 1, clutter_num(i))];
-
-        z{i} = [z{i} clutter{i}];
+                      unifrnd(model.range_c(1,2), model.range_c(2,2), 1, clutter_num(i))];
     end
-
 end
 
 %% Prior Initialze
@@ -114,6 +87,7 @@ end
 w_update = cell(duration, 1);
 m_update = cell(duration, 1);
 P_update = cell(duration, 1);
+P_D = cell(duration, 1);
 
 w_update{1} = 0.5;
 m_update{1}(:, 1) = [1000; 1000; 10; 10];
@@ -128,7 +102,8 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-sensor_trajectory = repmat([num_of_sensor(1);num_of_sensor(2)],1,duration);
+sensor_traj = repmat([sensor_num(2);sensor_num(1)],1,duration);
+% sensor_traj = repmat([15;15],1,duration);
 
 %% Initial Prediction
 
@@ -148,24 +123,41 @@ L_max = 100;                  % limit on number of Gaussian components
 %% Recursion
 
 for k = 1:duration
-
+    
+    sensor_pos = sensor_network(sensor_traj(1,k), sensor_traj(2,k)).pos;
+    [z, P_D{k}] = get_meas(sensor_pos, gt(:,:,k),model,clutter{k});
+    
     %% Update
-    n = size(z{k},2);       %number of measurement
+    n = size(z,2);       %number of measurement
 
     % Miss Detection Hypothesis
+
+    diff = repmat(sensor_pos,1,size(m_predict(1:2,:),2)) - m_predict(1:2,:);
+    P_D_predict = zeros(1,size(m_predict(1:2,:),2));
+    for idx = 1 : size(P_D_predict,2)
+        P_D_predict(:,idx) = exp(-.5*diff(:,idx)'*model.P_D_cov_inv*diff(:,idx));
+    end
+
     w_update{k} = model.P_MD*w_predict;
     m_update{k} = m_predict;
     P_update{k} = P_predict;
 
     % Detected Hypothesis
-    [likelihood_tmp] = cal_likelihood(z{k},model,m_predict,P_predict);
+    [likelihood_tmp] = cal_likelihood(z,model,m_predict,P_predict);
 
     if n ~= 0
-        [m_temp, P_temp] = update_KF(z{k},model,m_predict,P_predict);
+        [m_temp, P_temp] = update_KF(z,model,m_predict,P_predict);
         for i = 1:n
-
+            
+            % Calculate P_D
+            diff = repmat(sensor_pos,1,size(m_temp(1:2,:,i),2)) - m_temp(1:2,:,i);
+            P_D_temp = zeros(1,size(m_temp(1:2,:,i),2));
+            for idx = 1 : size(P_D_temp,2)
+                P_D_temp(:,idx) = exp(-.5*diff(:,idx)'*model.P_D_cov_inv*diff(:,idx));
+            end
+    
             % Calculate detection weight of each probable object detect
-            w_temp = model.P_D * w_predict .* likelihood_tmp(:,i);
+            w_temp = P_D_temp * w_predict .* likelihood_tmp(:,i);
             
             if (hasClutter)
                 w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
@@ -224,7 +216,7 @@ for k = 1:duration
     %% Calculate next optimize sensor position
 
 
-    [sensor_trajectory(:,k+1), min_void_probability, void_matrix] = void_prob_rec(sensor_trajectory(:,k),...
+    [sensor_traj(:,k+1), min_void_probability, void_matrix] = void_prob_rec(sensor_traj(:,k),...
      sensor_network, w_predict,m_predict, P_predict, sur_area, sensor_spacing);
     
     void_prob(k) = min_void_probability;
@@ -235,36 +227,60 @@ for k = 1:duration
         figure(3);
         hold on;
 
-        for r = 1 : num_of_sensor(2)
-            for c = 1 : num_of_sensor(1)
-                sensor_plot = plot(sensor_network(r,c).x, sensor_network(r,c).y, '--x' ...
-                , 'LineWidth', 1.5, 'MarkerSize', 5 ...
-                ,'Color', 'black'); 
-            end
-        end
-        
-        current_pos = sensor_trajectory(:,k);
-        current_sensor_plot = plot(sensor_network(current_pos(1), current_pos(2)).x, ...
-                                   sensor_network(current_pos(1), current_pos(2)).y, ...
+%         for r = 1 : sensor_num(2)
+%             for c = 1 : sensor_num(1)
+%                 sensor_plot = plot(sensor_network(r,c).pos(1,:), sensor_network(r,c).pos(2,:) ...
+%                 , '--x' ...
+%                 , 'LineWidth', 1.5, 'MarkerSize', 5 ...
+%                 ,'Color', 'black'); 
+%             end
+%         end
+%         
+        current_pos = sensor_network(sensor_traj(1,k), sensor_traj(2,k)).pos;
+        current_sensor_plot = plot(current_pos(1,:), current_pos(2,:), ...
                                    'LineWidth', 1.5, 'MarkerSize', 10, ...
                                    'MarkerFaceColor', [1 0.4784 0.4784], ...
                                    'MarkerEdgeColor', 'red', ...
                                    'Marker', 'diamond');
 
-        if (k <= size(gt_1, 2))
-            gt1_plot = plot(gt_1(1,k), gt_1(2,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        if (k < sum(tar_status(1,:)))
+            gt1_plot = plot(gt(1,1,k), gt(2,1,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color',[0.9290 0.6940 0.1250]);
+        elseif (k == sum(tar_status(1,:)))
+            gt1_plot = plot(gt(1,1,k), gt(2,1,k), '--^', 'LineWidth', 1.5, 'MarkerSize', 5 ...
             ,'Color',[0.9290 0.6940 0.1250]);
         end
         
-        if (k <= size(gt_2, 2))
-            gt2_plot = plot(gt_2(1,k), gt_2(2,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+        if (k < sum(tar_status(2,:)))
+            gt2_plot = plot(gt(1,2,k), gt(2,2,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1 0 0]);
+        elseif (k == sum(tar_status(2,:)))
+            gt2_plot = plot(gt(1,2,k), gt(2,2,k), '--^', 'LineWidth', 1.5, 'MarkerSize', 5 ...
             ,'Color', [1 0 0]);
         end
 
-        if (hasBirthObj && k > birth_time_1 && k < birth_time_1 + b_duration_1)
-            b1_plot = plot(birth_gt_1(1,k-birth_time_1), birth_gt_1(2,k-birth_time_1), ...
-             '--o', 'LineWidth', 1.5, 'MarkerSize', 5, ...
-             'Color',[0.1490 0.9882 0.7216]);
+        if (k < sum(tar_status(3,:)))
+            gt3_plot = plot(gt(1,3,k), gt(2,3,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1.0000 0.4784 0.4784]);
+        elseif (k == sum(tar_status(3,:)))
+            gt3_plot = plot(gt(1,3,k), gt(2,3,k), '--^', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [1.0000 0.4784 0.4784]);
+        end
+
+        if (k < sum(tar_status(4,:)))
+            gt4_plot = plot(gt(1,4,k), gt(2,4,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [0 1 0]);
+        elseif (k == sum(tar_status(4,:)))
+            gt4_plot = plot(gt(1,4,k), gt(2,4,k), '--^', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [0 1 0]);
+        end
+
+        if (k < sum(tar_status(5,:)))
+            gt5_plot = plot(gt(1,5,k), gt(2,5,k), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [0.9137 0.0471 0.9608]);
+        elseif (k == sum(tar_status(5,:)))
+            gt5_plot = plot(gt(1,5,k), gt(2,5,k), '--^', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+            ,'Color', [0.9137 0.0471 0.9608]);
         end
         
         for num = 1 : num_objects(k)
@@ -291,8 +307,8 @@ if (doPlotEstimation)
     
     hold on; 
     
-    for row = 1 : num_of_sensor(2)
-        for col = 1: num_of_sensor(1)
+    for row = 1 : sensor_num(2)
+        for col = 1: sensor_num(1)
             
         end
     end
@@ -375,8 +391,8 @@ if (doPlotSensorNetwork)
     figure(3);
     hold on;
 
-    for r = 1 : num_of_sensor(2)
-        for c = 1 : num_of_sensor(1)
+    for r = 1 : sensor_num(2)
+        for c = 1 : sensor_num(1)
             sensor_plot = plot(sensor_network(r,c).x, sensor_network(r,c).y, '--x' ...
             , 'LineWidth', 1.5, 'MarkerSize', 5 ...
             ,'Color', 'black');
