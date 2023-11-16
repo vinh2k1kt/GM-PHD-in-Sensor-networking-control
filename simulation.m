@@ -7,14 +7,14 @@ clc, clear, close all
 
 %% Simulation Setting
 
-duration = 100;
+duration = 200;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasClutter = true;
 hasBirthObj = false;
 
-doPlotOSPA = false;
+doPlotOSPA = true;
 doPlotEstimation = false;
 doPlotSensorNetwork = false;
 doPlotSensorNetworkProcess = true;
@@ -52,7 +52,7 @@ obj_3 = [600; 720; .75; -1.5];
 obj_4 = [700; 700; 1.7; .2];
 obj_5 = [750; 800; 1.6; -1.2];
 
-obj = cat(2,obj_1, obj_2);
+obj = cat(2,obj_1, obj_2, obj_3, obj_4, obj_5);
 
 tar_status = true(size(obj,2), duration);
 tar_status(size(obj,2),t_die+1:end) = false;
@@ -99,7 +99,7 @@ for r = 1 : row_d
         idx = (r-1)*row_d + c;
         w_update{1}(idx, :) = 0.5 / (row_d * col_d);
         m_update{1}(:,idx) = [((r-.5) * delta_r); ((c-.5)*delta_c); 10; 10];
-        P_update{1}(:, :, idx) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
+        P_update{1}(:, :, idx) = diag([sur_area(2,1)/16 sur_area(2,2)/16 100 100]).^2;
     end
 end
 
@@ -112,7 +112,7 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-sensor_traj = repmat([1;2],1,duration);
+sensor_traj = repmat([1;1],1,duration);
 
 %% Initial Prediction
 
@@ -149,9 +149,9 @@ for k = 1:duration
     P_update{k} = P_predict;
 
     % Detected Hypothesis
-    [likelihood_tmp] = cal_likelihood(z,model,m_predict,P_predict);
 
     if n ~= 0
+        [likelihood_tmp] = cal_likelihood(z,model,m_predict,P_predict);
         [m_temp, P_temp] = update_KF(z,model,m_predict,P_predict);
         for i = 1:n
             
@@ -215,9 +215,9 @@ for k = 1:duration
     [m_predict, P_predict] = predict_KF(model, m_update{k}, P_update{k});
     w_predict = model.P_S * w_update{k};
 
-    w_predict = cat(1, model.w_birth, w_predict);
-    m_predict = cat(2, model.m_birth, m_predict);
-    P_predict = cat(3, model.P_birth, P_predict);
+%     w_predict = cat(1, model.w_birth, w_predict);
+%     m_predict = cat(2, model.m_birth, m_predict);
+%     P_predict = cat(3, model.P_birth, P_predict);
 
     %% Calculate next optimize sensor position
 
@@ -312,23 +312,21 @@ if (doPlotEstimation)
     figure(1);
     
     hold on; 
-    
-    for row = 1 : sensor_num(2)
-        for col = 1: sensor_num(1)
-            
-        end
-    end
-    
-    
-    gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color',[0.9290 0.6940 0.1250]);
-    gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color', [1 0 0]);
-    
-    if (hasBirthObj)
-        b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color',[0.1490 0.9882 0.7216]);
-    end
+
+    gt1_plot = plot(gt(1,1,:), gt(2,1,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color',[0.9290 0.6940 0.1250]);
+
+    gt2_plot = plot(gt(1,2,:), gt(2,2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [1 0 0]);
+
+    gt3_plot = plot(gt(1,3,:), gt(2,3,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [1.0000 0.4784 0.4784]);
+
+    gt4_plot = plot(gt(1,4,:), gt(2,4,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [0 1 0]);
+
+    gt5_plot = plot(gt(1,5,:), gt(2,5,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
+    ,'Color', [0.9137 0.0471 0.9608]);
     
     for i = 1 : duration
         z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
@@ -341,55 +339,6 @@ if (doPlotEstimation)
     title('Sensor POV', ...
         'FontSize', 14, ...
         'FontWeight', 'bold');
-    
-    if (hasBirthObj)
-        legend([gt1_plot, gt2_plot, b1_plot, z_plot], ...
-        'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Measurement', ...
-        'Location', 'northeastoutside');
-    else
-        legend([gt1_plot, gt2_plot, z_plot], ...
-        'Ground truth 1', 'Ground truth 2', 'Measurement', ...
-        'Location', 'northeastoutside');
-    end
-    
-    figure(2);
-    hold on;
-    
-    gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color',[0.9290 0.6940 0.1250]);
-    gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color', [1 0 0]);
-    
-    if (hasBirthObj)
-        b1_plot = plot(birth_gt_1(1,:), birth_gt_1(2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-        ,'Color',[0.1490 0.9882 0.7216]);
-    end
-    
-    for t = 2:duration
-        for k = 1:num_objects(t)
-            est_plot = plot(est_state{t}(1, k), est_state{t}(2, k), 'o' ...
-                , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
-        end
-    end
-    
-    xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
-    ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
-    xlim([sur_area(1,1),sur_area(2,1)]);
-    ylim([sur_area(1,2), sur_area(2,2)]);
-    title('Estimation', ...
-        'FontSize', 14, ...
-        'FontWeight','bold');
-    
-    if (hasBirthObj)
-        legend([gt1_plot, gt2_plot, b1_plot,est_plot], ...
-        'Ground truth 1', 'Ground truth 2', 'Birth 1', 'Estimated State', ...
-        'Location', 'northeastoutside');
-    else
-        legend([gt1_plot, gt2_plot, est_plot], ...
-        'Ground truth 1', 'Ground truth 2', 'Estimated State', ...
-        'Location', 'northeastoutside');
-    end
-
 end
 
 if (doPlotSensorNetwork)
@@ -457,29 +406,11 @@ if (doPlotOSPA)
             est_mat = [];
         end
         
-        if ~(t > size(gt_1, 2))
-            gt1_mat = gt_1(1:2,t);
-        else
-            gt1_mat = [];
-        end
-    
-        if ~(t > size(gt_2, 2))
-            gt2_mat = gt_2(1:2,t);
-        else
-            gt2_mat = [];
-        end
-    
-        if (t <= birth_time_1 || t > (birth_time_1 + b_duration_1))
-            b1_mat = [];
-        else
-            b1_mat = birth_gt_1(1:2, t - birth_time_1);
-        end
+        obj_indx = (tar_status(:,t) == 1);
+        gt_mat = gt(1:2,obj_indx,t);
         
-        if (hasBirthObj)
-            ospa(t) = ospa_dist([gt1_mat, gt2_mat, b1_mat], est_mat, ospa_cutoff, ospa_order);
-        else
-            ospa(t) = ospa_dist([gt1_mat, gt2_mat], est_mat, ospa_cutoff, ospa_order);
-        end
+        ospa(t) = ospa_dist(gt_mat, est_mat, ospa_cutoff, ospa_order);
+
     end
     
     figure (4);

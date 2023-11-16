@@ -15,7 +15,7 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
                 sensor_pos = avaiable_sensor(row,col).pos;
                 
                 % Rec Size [x_min y_min; x_max y_max] 
-                rec_size = sur_area(2,:) / 40; 
+                rec_size = sur_area(2,:) / 10; 
 
                 rec_bound = [-rec_size(:,1)/2, -rec_size(:,2)/2; rec_size(:,1)/2, rec_size(:,2)/2];
                 
@@ -37,8 +37,8 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
                 for x_i = 1 : x_step
                     for y_i = 1 : y_step
                         
-                        x = rec_coordinate(1,1) + (x_i + 0.5) * delta_x;
-                        y = rec_coordinate(1,2) + (y_i + 0.5) * delta_y;
+                        x = rec_coordinate(1,1) + (x_i - 0.5) * delta_x;
+                        y = rec_coordinate(1,2) + (y_i - 0.5) * delta_y;
             
                         r_ij = [x;y];
 
