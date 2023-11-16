@@ -98,13 +98,10 @@ for r = 1 : row_d
     for c = 1 : col_d
         idx = (r-1)*row_d + c;
         w_update{1}(idx, :) = 0.5 / (row_d * col_d);
-        m_update{1}(:,idx) = [(r * delta_r)/2; (c*delta_c)/2; 10; 10];
+        m_update{1}(:,idx) = [((r-.5) * delta_r); ((c-.5)*delta_c); 10; 10];
         P_update{1}(:, :, idx) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
     end
 end
-% w_update{1} = 0.5;
-% m_update{1}(:, 1) = [1000; 1000; 10; 10];
-% P_update{1}(:, :, 1) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
 
 L_update = 1;
 est_state = cell(duration, 1);
@@ -115,17 +112,13 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-%sensor_traj = repmat([sensor_num(2);sensor_num(1)],1,duration);
- sensor_traj = repmat([1;1],1,duration);
+sensor_traj = repmat([1;2],1,duration);
 
 %% Initial Prediction
 
-[m_predict, P_predict] = predict_KF(model, m_update{1}, P_update{1});
-w_predict = model.P_S * w_update{1};
-
-w_predict = cat(1, model.w_birth, w_predict);
-m_predict = cat(2, model.m_birth, m_predict);
-P_predict = cat(3, model.P_birth, P_predict);
+m_predict = m_update{1};
+P_predict = P_update{1};
+w_predict = w_update{1};
 
 %% Pruning & Merging Parameter Setting
 
@@ -138,8 +131,7 @@ L_max = 100;                  % limit on number of Gaussian components
 for k = 1:duration
     
     sensor_pos = sensor_network(sensor_traj(1,k), sensor_traj(2,k)).pos;
-    [z, P_D{k}, t_dtd] = get_meas(sensor_pos, gt(:,:,k),model,clutter{k});
-    %P_D{k} = P_D{k}(:,t_dtd);
+    [z, P_D{k}, t_dtd] = get_meas(sensor_pos, gt(:,:,k),model,clutter{k}, tar_status(:,k));
 
     %% Update
     n = size(z,2);       %number of measurement
@@ -153,7 +145,6 @@ for k = 1:duration
     end
 
     w_update{k} = (1-P_D_predict)'.*w_predict;
-    %w_update{k} = (1-P_D{k})*w_predict;
     m_update{k} = m_predict;
     P_update{k} = P_predict;
 
@@ -173,7 +164,6 @@ for k = 1:duration
     
             % Calculate detection weight of each probable object detect
             w_temp = P_D_temp' .* w_predict .* likelihood_tmp(:,i);
-            %w_temp = P_D{k}' .* w_predict .* likelihood_tmp(:,i);
             
             if (hasClutter)
                 w_temp = w_temp ./ (model.lambda_c*model.pdf_c + sum(w_temp));
@@ -251,7 +241,7 @@ for k = 1:duration
 %                 ,'Color', 'black'); 
 %             end
 %         end
-%         
+        
         current_pos = sensor_network(sensor_traj(1,k), sensor_traj(2,k)).pos;
         current_sensor_plot = plot(current_pos(1,:), current_pos(2,:), ...
                                    'LineWidth', 1.5, 'MarkerSize', 10, ...

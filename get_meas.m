@@ -1,8 +1,9 @@
-function [meas, P_D, t_dtd] = get_meas(sensor_pos, ground_truth, model, clutter)
+function [meas, P_D, t_dtd] = get_meas(sensor_pos, ground_truth, model, clutter, tar_status)
     
     % p(x|m,P) = N(m,P) =
     % (2pi)^(-D/2)*det(P)^(-1/2) * exp(-1/2*(x-m)' * P^(-1) * (x-m))
 
+    ground_truth = ground_truth(:,tar_status);
     diff = repmat(sensor_pos,1,size(ground_truth,2)) - ground_truth(1:2,:);
     P_D = zeros(1,size(ground_truth,2));
     for i = 1 : size(ground_truth,2)

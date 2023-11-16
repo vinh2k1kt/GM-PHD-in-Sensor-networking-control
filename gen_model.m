@@ -3,7 +3,7 @@ function model = gen_model
 % Transition Model
 model.x_dim = 4;     % x dimension
 model.z_dim = 2;     % z dimension
-model.dt = 1;       % sampling period
+model.dt = 2;       % sampling period
 
 % Surviving/Death Parameters
 model.P_S = 0.99;     % Surviving Probability
