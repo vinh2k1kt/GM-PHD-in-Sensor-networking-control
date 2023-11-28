@@ -7,7 +7,7 @@ clc, clear, close all
 
 %% Simulation Setting
 
-loop_time = 50;
+loop_time = 1;
 duration = 100;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
@@ -17,7 +17,7 @@ hasBirthObj = false;
 
 doPlotOSPA = true;
 doPlotAverageOspa = true;
-doPlotEstimation = false;
+doPlotEstimation = true;
 doPlotSensorNetwork = false;
 doPlotSensorNetworkProcess = false;
 doPlotVoidProb = false;
@@ -110,7 +110,7 @@ for loop_i = 1 : loop_time
             idx = (r-1)*row_d + c;
             w_update{1}(idx, :) = 0.5 / (row_d * col_d);
             m_update{1}(:,idx) = [((r-.5) * delta_r); ((c-.5)*delta_c); 10; 10];
-            P_update{1}(:, :, idx) = diag([sur_area(2,1)/16 sur_area(2,2)/16 100 100]).^2;
+            P_update{1}(:, :, idx) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
         end
     end
     
@@ -134,7 +134,7 @@ for loop_i = 1 : loop_time
     
     %% Pruning & Merging Parameter Setting
     
-    elim_threshold = 1e-3;        % pruning threshold
+    elim_threshold = 1e-6;        % pruning threshold
     merge_threshold = 4;          % merging threshold
     L_max = 100;                  % limit on number of Gaussian components
     

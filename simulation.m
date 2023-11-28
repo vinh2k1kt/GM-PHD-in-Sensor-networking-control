@@ -15,9 +15,9 @@ hasClutter = true;
 hasBirthObj = false;
 
 doPlotOSPA = true;
-doPlotEstimation = false;
+doPlotEstimation = true;
 doPlotSensorNetwork = false;
-doPlotSensorNetworkProcess = true;
+doPlotSensorNetworkProcess = false;
 doPlotVoidProb = false;
 
 %% Generate Sensor Coordination
@@ -44,7 +44,7 @@ model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 
 %% Object Setting (obj_k = [x;y;vx;vy])
 
-t_die = 19;
+t_die = duration - min(duration, 20);
 
 obj_1 = [800; 600; -.3; -1.8];
 obj_2 = [650; 500; -.4; 1.1];
@@ -66,7 +66,7 @@ gt = zeros(size(obj,1), size(obj,2), duration);
 [gt(:,3,:), tar_status(3,:)] = gen_ground_truth('Linear', obj_3, duration,model, sur_area);
 [gt(:,4,:), tar_status(4,:)] = gen_ground_truth('Linear', obj_4, duration,model, sur_area);
 [gt(:,5,:), tar_status(5,:)] = gen_ground_truth('Linear', obj_5, duration,model, sur_area);
-    
+
 tar_status(5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = false;
 
 %% Generate Clutter
@@ -99,7 +99,7 @@ for r = 1 : row_d
         idx = (r-1)*row_d + c;
         w_update{1}(idx, :) = 0.5 / (row_d * col_d);
         m_update{1}(:,idx) = [((r-.5) * delta_r); ((c-.5)*delta_c); 10; 10];
-        P_update{1}(:, :, idx) = diag([sur_area(2,1)/16 sur_area(2,2)/16 100 100]).^2;
+        P_update{1}(:, :, idx) = diag([sur_area(2,1) sur_area(2,2) 100 100]).^2;
     end
 end
 
@@ -122,7 +122,7 @@ w_predict = w_update{1};
 
 %% Pruning & Merging Parameter Setting
 
-elim_threshold = 1e-3;        % pruning threshold
+elim_threshold = 1e-7;        % pruning threshold
 merge_threshold = 4;          % merging threshold
 L_max = 100;                  % limit on number of Gaussian components
 
@@ -220,8 +220,7 @@ for k = 1:duration
 %     P_predict = cat(3, model.P_birth, P_predict);
 
     %% Calculate next optimize sensor position
-
-
+    
     [sensor_traj(:,k+1), min_void_probability, void_matrix] = void_prob_rec(sensor_traj(:,k),...
      sensor_network, w_predict,m_predict, P_predict, sur_area, sensor_spacing);
     

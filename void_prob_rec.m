@@ -1,5 +1,5 @@
 function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area, sensor_spacing)
-   
+
     avaiable_sensor = findNeighbour(sensor_index, sensor_network);
     otp_pos = sensor_index;
     min_void_probability = 1;
