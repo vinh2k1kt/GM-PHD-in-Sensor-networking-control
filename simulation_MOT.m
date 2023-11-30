@@ -11,7 +11,7 @@
 
 clc, clear, close all;
 %% Simulation setting
-duration = 100;
+duration = 5;
 model = gen_model;
 
 %% Ground-truth, noise setting
@@ -52,8 +52,10 @@ elim_threshold = 1e-5;        % pruning threshold
 merge_threshold = 4;          % merging threshold
 L_max = 100;                  % limit on number of Gaussian components
 
+exe_time = zeros(1,duration - 1);
 %% Recursive filtering
 for k = 2:duration
+    execution = tic;
     %% Predict
     [m_predict, P_predict] = KF_predict(model, m_update{k-1}, P_update{k-1});
     w_predict = model.P_S * w_update{k-1};
@@ -95,14 +97,14 @@ for k = 2:duration
     L_posterior= length(w_update{k});
     
     % pruning, merging, caping
-    [w_update{k},m_update{k},P_update{k}]= gaus_prune(w_update{k},m_update{k},P_update{k},elim_threshold);    
-    L_prune= length(w_update{k});
-    [w_update{k},m_update{k},P_update{k}]= gaus_merge(w_update{k},m_update{k},P_update{k},merge_threshold);   
-    L_merge= length(w_update{k});
-    [w_update{k},m_update{k},P_update{k}]= gaus_cap(w_update{k},m_update{k},P_update{k},L_max);               
-    L_cap= length(w_update{k});
+%     [w_update{k},m_update{k},P_update{k}]= gaus_prune(w_update{k},m_update{k},P_update{k},elim_threshold);    
+%     L_prune= length(w_update{k});
+%     [w_update{k},m_update{k},P_update{k}]= gaus_merge(w_update{k},m_update{k},P_update{k},merge_threshold);   
+%     L_merge= length(w_update{k});
+%     [w_update{k},m_update{k},P_update{k}]= gaus_cap(w_update{k},m_update{k},P_update{k},L_max);               
+%     L_cap= length(w_update{k});
     
-    L_update= L_cap;
+%     L_update= L_cap;
 
     num_objects(k) = round(sum(w_update{k}));
     num_targets = num_objects(k);
@@ -118,18 +120,38 @@ for k = 2:duration
     for i = 1:size(indices,2)
         est{k} = [est{k} m_update{k}(:,i)];
     end
-
+    
+    exe_time(k) = toc(execution);
     %---display diagnostics
-    disp([' time= ',num2str(k),...
-         ' #gaus orig=',num2str(L_posterior),...
-         ' #gaus elim=',num2str(L_prune), ...
-         ' #gaus merg=',num2str(L_merge), ...
-         ' #gaus cap=',num2str(L_cap), ...
-         ' #measurement number=',num2str(n)]);
+%     disp([' time= ',num2str(k),...
+%          ' #gaus orig=',num2str(L_posterior),...
+%          ' #gaus elim=',num2str(L_prune), ...
+%          ' #gaus merg=',num2str(L_merge), ...
+%          ' #gaus cap=',num2str(L_cap), ...
+%          ' #measurement number=',num2str(n)]);
 end
 
 
 %% Plot and visualize
+figure(6);
+hold on;
+w = zeros(1,duration);
+for i = 1 : duration
+    w(i) = size(w_update{i},1);
+end
+
+xlabel('Time', 'FontSize', 12, 'FontWeight','bold');
+ylabel(' Gauss components', 'FontSize', 12, 'FontWeight','bold');
+plot(w,'--o', 'LineWidth', 1.5,'MarkerFaceColor','red');
+
+figure(7);
+hold on;
+plot(exe_time(1,:),'--o', 'LineWidth', 1.5,'MarkerFaceColor','red','Color','green', ...
+    'MarkerEdgeColor', 'red');
+
+xlabel('Time', 'FontSize', 12, 'FontWeight','bold');
+ylabel(' Excecution Time (s)', 'FontSize', 12, 'FontWeight','bold');
+
 figure(1);
 subplot(211);
 hold on;
