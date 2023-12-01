@@ -7,7 +7,7 @@ clc, clear, close all
 
 %% Simulation Setting
 
-duration = 200;
+duration = 150;
 sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max] 
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
@@ -112,7 +112,7 @@ num_objects = zeros(duration, 1);
 void_prob = zeros(duration, 1);
 void_prob_matrix = cell(duration, 1);
 
-sensor_traj = repmat([1;1],1,duration);
+sensor_traj = repmat([16;16],1,duration);
 
 %% Initial Prediction
 
@@ -311,33 +311,69 @@ if (doPlotEstimation)
     figure(1);
     
     hold on; 
-
-    gt1_plot = plot(gt(1,1,:), gt(2,1,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color',[0.9290 0.6940 0.1250]);
-
-    gt2_plot = plot(gt(1,2,:), gt(2,2,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [1 0 0]);
-
-    gt3_plot = plot(gt(1,3,:), gt(2,3,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [1.0000 0.4784 0.4784]);
-
-    gt4_plot = plot(gt(1,4,:), gt(2,4,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [0 1 0]);
-
-    gt5_plot = plot(gt(1,5,:), gt(2,5,:), '--o', 'LineWidth', 1.5, 'MarkerSize', 5 ...
-    ,'Color', [0.9137 0.0471 0.9608]);
     
-    for i = 1 : duration
-        z_plot = plot(z{i}(1,:), z{i}(2,:), '.b');
-    end
+    gt_1 = permute(gt(1:2,1,:),[1 3 2]);
+    gt_1 = gt_1(:,1:sum(tar_status(1,:)));
+    
+    plot(gt_1(1,1), gt_1(2,1), 'v', 'LineWidth', 1.5 ...
+    ,'Color',[0.9290 0.6940 0.1250]) 
+    plot(gt_1(1,end), gt_1(2,end), 's', 'LineWidth', 1.5 ...
+    ,'Color',[0.9290 0.6940 0.1250]) 
+
+    gt1_plot = plot(gt_1(1,:), gt_1(2,:), '--', 'LineWidth', 1.5 ...
+    ,'Color',[0.9290 0.6940 0.1250]);
+    
+    gt_2 = permute(gt(1:2,2,:),[1 3 2]);
+    gt_2 = gt_2(:,1:sum(tar_status(2,:)));
+    
+    plot(gt_2(1,1), gt_2(2,1), 'v', 'LineWidth', 1.5 ...
+    ,'Color',[1 0 0]) 
+    plot(gt_2(1,end), gt_2(2,end), 's', 'LineWidth', 1.5 ...
+    ,'Color',[1 0 0]) 
+    
+    gt2_plot = plot(gt_2(1,:), gt_2(2,:), '--', 'LineWidth', 1.5 ...
+    ,'Color', [1 0 0]);
+    
+    gt_3 = permute(gt(1:2,3,:),[1 3 2]);
+    gt_3 = gt_3(:,1:sum(tar_status(3,:)));
+
+    plot(gt_3(1,1), gt_3(2,1), 'v', 'LineWidth', 1.5 ...
+    ,'Color',[1.0000 0.4784 0.4784]) 
+    plot(gt_3(1,end), gt_3(2,end), 's', 'LineWidth', 1.5 ...
+    ,'Color',[1.0000 0.4784 0.4784])
+
+    gt3_plot = plot(gt_3(1,:), gt_3(2,:), '--', 'LineWidth', 1.5 ...
+    ,'Color', [1.0000 0.4784 0.4784]);
+    
+    gt_4 = permute(gt(1:2,4,:),[1 3 2]);
+    gt_4 = gt_4(:,1:sum(tar_status(4,:)));
+
+    plot(gt_4(1,1), gt_4(2,1), 'v', 'LineWidth', 1.5 ...
+    ,'Color',[0 1 0]) 
+    plot(gt_4(1,end), gt_4(2,end), 's', 'LineWidth', 1.5 ...
+    ,'Color',[0 1 0])
+
+    gt4_plot = plot(gt_4(1,:), gt_4(2,:), '--', 'LineWidth', 1.5 ...
+    ,'Color', [0 1 0]);
+    
+    gt_5 = permute(gt(1:2,5,:),[1 3 2]);
+    gt_5 = gt_5(:,1:sum(tar_status(5,:)));
+
+    plot(gt_5(1,1), gt_5(2,1), 'v', 'LineWidth', 1.5 ...
+    ,'Color',[0.9137 0.0471 0.9608]) 
+    plot(gt_5(1,end), gt_5(2,end), 's', 'LineWidth', 1.5 ...
+    ,'Color',[0.9137 0.0471 0.9608])
+
+    gt5_plot = plot(gt_5(1,:), gt_5(2,:), '--', 'LineWidth', 1.5 ...
+    ,'Color', [0.9137 0.0471 0.9608]);
     
     xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
     ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
     xlim([sur_area(1,1),sur_area(2,1)]);
     ylim([sur_area(1,2), sur_area(2,2)]);
-    title('Sensor POV', ...
-        'FontSize', 14, ...
-        'FontWeight', 'bold');
+%     title('Sensor POV', ...
+%         'FontSize', 14, ...
+%         'FontWeight', 'bold');
 end
 
 if (doPlotSensorNetwork)

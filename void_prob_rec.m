@@ -67,15 +67,16 @@ function [intensity_val] = intensity(r_ij, w, m, P)
 
     % p(x|m,P) = N(m,P) =
     % (2pi)^(-D/2)*det(P)^(-1/2) * exp(-1/2*(x-m)' * P^(-1) * (x-m))
-
+    
+    L_max = min(10,size(m,2));
     D = size(r_ij,1); %Dimension;
     
-    m = m(1:D,:);
-    P = P(1:D,1:D,:);
+    m = m(1:D,1:L_max);
+    P = P(1:D,1:D,1:L_max);
 
     intensity_val = 0;
 
-    for i = 1 : size(m,2)
+    for i = 1 : L_max
         gaussian_distribution = w(i) * (2*pi)^(-D/2)*det(P(:,:,i))^(-0.5)*...
             exp(-0.5*(r_ij - m(:,i))' * 1/P(:,:,i) * (r_ij - m(:,i)));
 
