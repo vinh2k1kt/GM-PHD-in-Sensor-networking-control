@@ -13,13 +13,11 @@ sur_area = [0 0; 1000 1000]; %Survilance area [x_min y_min; x_max y_max]
 sensor_spacing = [50; 50];   %Space between each sensor [x_space; y_space]
 
 hasClutter = true;
-hasBirthObj = false;
 
 doPlotOSPA = true;
-doPlotEstimation = true;
 doPlotAverageOspa = true;
 doPlotSensorTraj = true;
-doPlotSensorNetworkProcess = false;
+doPlotSensorNetworkProcess = true;
 doPlotVoidProb = false;
 
 %% Generate Sensor Coordination
@@ -47,7 +45,7 @@ model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 %% Object Setting (obj_k = [x;y;vx;vy])
 
 t_die = duration - min(duration, 80);
-t_birth = duration - min(duration, 50);
+t_birth = duration - min(duration, 80);
 obj_1 = [800; 600; -.3; -1.8];
 obj_2 = [650; 500; .4; 1.1];
 obj_3 = [600; 720; .75; -1.5];
@@ -71,6 +69,7 @@ gt = zeros(size(obj,1), size(obj,2), duration);
 
 gt(:,6,t_birth:end) = gt(:,6,1:duration - t_birth + 1);
 gt(:,6,1:t_birth - 1) = NaN;
+gt(:,5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = NaN;
 tar_status(5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = false;
 tar_status(6,1:t_birth-1) = false;
 
@@ -303,10 +302,10 @@ for loop_i = 1 : loop_time
                 ,'Color', [0.9137 0.0471 0.9608]);
             end
             
-            for num = 1 : num_objects(k)
-                est_plot = plot(est_state{k}(1, num), est_state{k}(2, num), 'o' ...
-                        , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
-            end
+%             for num = 1 : num_objects(k)
+%                 est_plot = plot(est_state{k}(1, num), est_state{k}(2, num), 'o' ...
+%                         , 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
+%             end
     
             xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
             ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
@@ -470,7 +469,8 @@ disp(['         ', num2str(sum(exec_time, 'all')), ...
     ' (s)                       ', num2str(sum(exec_time, 'all')/loop_time), ' (s)']);
 
 if (doPlotAverageOspa)
-    avg_ospa = sum(avg_ospa, 1) / loop_time;
+    total_ospa = avg_ospa;
+    avg_ospa = sum(total_ospa, 1) / loop_time;
     
     figure(6)
     

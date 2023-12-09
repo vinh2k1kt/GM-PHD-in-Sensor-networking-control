@@ -13,7 +13,7 @@ model.P_D = 0.99;        % probability of detection in measurements
 model.P_MD= 1-model.P_D; % probability of missed detection in measurements
 
 %model.P_D_cov = 1.5e5*[5 -4;-4 6];
-model.P_D_cov = 1.5e5*[3 -2.4;-2.4 3.6];
+model.P_D_cov = 1e5*[3 -2.4;-2.4 3.6];
 model.P_D_cov_inv = inv(model.P_D_cov);
 model.P_D_cov_det = model.P_D_cov(1,1)*model.P_D_cov(2,2)-...
 model.P_D_cov(1,2)*model.P_D_cov(2,1);
@@ -32,7 +32,7 @@ model.w_birth= zeros(model.L_birth,1);                                %weights o
 model.m_birth= zeros(model.x_dim,model.L_birth);                      %means of Gaussian birth terms 
 model.P_birth= zeros(model.x_dim,model.x_dim,model.L_birth);          %cov of Gaussian birth terms
 
-model.w_birth= repmat(.02, model.L_birth, 1);                                            %birth of simulation (example 1)
+model.w_birth= repmat(.005, model.L_birth, 1);                                            %birth of simulation (example 1)
 model.m_birth= [950;200; -2; 1];
 
 model.P_birth(:,:,:)= repmat(diag([100, 100, 25, 25]),1,1,model.L_birth);
