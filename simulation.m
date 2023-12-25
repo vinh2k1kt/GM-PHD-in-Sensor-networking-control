@@ -24,7 +24,7 @@ doPlotVoidProb = true;
 
 sensor_num = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
 
-sensor.pos = 0;
+sensor.pos = zeros(2,1);
 
 sensor_network = repmat(sensor,sensor_num(2), sensor_num(1));
 
