@@ -1,7 +1,7 @@
 function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(sensor_index, sensor_network, w, m, P, sur_area, sensor_spacing)
 
     avaiable_sensor = findNeighbour(sensor_index, sensor_network);
-    
+
     otp_pos = sensor_index;
     min_void_probability = 1;
     
@@ -24,16 +24,13 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
                 rec_coordinate = [rec_bound(:,1) + sensor_pos(1,:), rec_bound(:,1) ...
                                   + sensor_pos(2,:)];
             
-                % x_min <= x <= x_max
-                % y_min <= y <= y_max
-            
                 x_step = 20;
                 y_step = 20;
             
                 delta_x = (rec_coordinate(2,1) - rec_coordinate(1,1)) / x_step;
                 delta_y = (rec_coordinate(2,2) - rec_coordinate(1,2)) / y_step;
-            
                 delta_a = delta_x * delta_y;
+
                 
                 for x_i = 1 : x_step
                     for y_i = 1 : y_step
@@ -51,7 +48,7 @@ function [otp_pos, min_void_probability, void_prob_matrix] = void_prob_rec(senso
 
                 void_prob_matrix(row, col) = void_prob; 
 
-                if (void_prob <= min_void_probability)
+                if (void_prob < min_void_probability)
 
                     min_void_probability = void_prob;
                     

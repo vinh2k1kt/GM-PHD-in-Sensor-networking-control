@@ -36,8 +36,3 @@ model.w_birth= repmat(.005, model.L_birth, 1);                                  
 model.m_birth= [950;200; -2; 1];
 
 model.P_birth(:,:,:)= repmat(diag([100, 100, 25, 25]),1,1,model.L_birth);
-
-% Clutter parameters
-model.lambda_c = 20;                                        % clutter rate
-model.range_c= [-1000 1000; -1000 1000];                    % uniform clutter region
-model.pdf_c= 1/prod(model.range_c(:,2)-model.range_c(:,1)); % uniform clutter density

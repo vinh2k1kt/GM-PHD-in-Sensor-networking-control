@@ -17,10 +17,15 @@ hasClutter = true;
 doPlotOSPA = true;
 doPlotAverageOspa = false;
 doPlotSensorTraj = true;
-doPlotSensorNetworkProcess = false;
-doPlotVoidProb = true;
+doPlotSensorNetworkProcess = true;
+doPlotVoidProb = false;
 
 %% Generate Sensor Coordination
+
+% X = sur_area(1,1) : sensor_spacing(1) : sur_area(2,1);
+% Y = sur_area(1,2) : sensor_spacing(2) : sur_area(2,2);
+% 
+% [sensor_x, sensor_y] = meshgrid(X,Y);
 
 sensor_num = [sur_area(2,1)/sensor_spacing(1) + 1; sur_area(2,2)/sensor_spacing(2) + 1];
 
@@ -38,40 +43,39 @@ end
 %% Generate Model
 
 model = gen_model;
+
+% Clutter parameters
+model.lambda_c = 20;                                    
 model.range_c = sur_area;
 model.pdf_c = 1/prod(model.range_c(2,:) - model.range_c(1,:));
 
-
-%% Object Setting (obj_k = [x;y;vx;vy])
-
-t_die = duration - min(duration, 80);
-t_birth = duration - min(duration, 80);
-obj_1 = [800; 600; -.3; -1.8];
-obj_2 = [650; 500; .4; 1.1];
-obj_3 = [600; 720; .75; -1.5];
-obj_4 = [700; 700; 1.7; .2];
-obj_5 = [750; 800; 1.8; -1.2];
-obj_6 = [950; 200; -2; 1];
-
-obj = cat(2,obj_1, obj_2, obj_3, obj_4, obj_5, obj_6);
-
-tar_status = true(size(obj,2), duration);
 %% Generate Ground Truth
 
-gt = zeros(size(obj,1), size(obj,2), duration);
+t_die = duration - min(duration, 100);    %Obj 5
+t_birth = duration - min(duration, 70);   %Obj 6
 
-[gt(:,1,:), tar_status(1,:)] = gen_ground_truth('Linear', obj_1, duration,model, sur_area);
-[gt(:,2,:), tar_status(2,:)] = gen_ground_truth('Linear', obj_2, duration,model, sur_area);
-[gt(:,3,:), tar_status(3,:)] = gen_ground_truth('Linear', obj_3, duration,model, sur_area);
-[gt(:,4,:), tar_status(4,:)] = gen_ground_truth('Linear', obj_4, duration,model, sur_area);
-[gt(:,5,:), tar_status(5,:)] = gen_ground_truth('Linear', obj_5, duration,model, sur_area);
-[gt(:,6,:), tar_status(6,:)] = gen_ground_truth('Linear', obj_6, duration,model, sur_area);
+gt = repmat([800 650 600 700 750 950;
+     600 500 720 700 800 200;
+     -.3 .4 .75 1.7 1.8 -2;
+     -1.8 1.1 -1.5 .2 -1.2 1], 1,1,duration);
 
+trans_noise = reshape(mvnrnd(zeros(4,1),model.Q,size(gt,2)*(duration-1))', ...
+    [size(gt,1),size(gt,2),duration-1]);
+trans_noise(3:end,:,:) = zeros(2,size(trans_noise,2), size(trans_noise,3));
+for i = 2 : duration
+    gt(:,:,i) = model.F * gt(:,:,i-1) + trans_noise(i);
+end
+
+%Dead obj
+gt(:,5,t_die+1:end) = NaN;
+
+%Shifting birth obj to correct time index
 gt(:,6,t_birth:end) = gt(:,6,1:duration - t_birth + 1);
-gt(:,6,1:t_birth - 1) = NaN;
-gt(:,5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = NaN;
-tar_status(5,min(t_die+1,sum(tar_status(5,:), 'all')+1):end) = false;
-tar_status(6,1:t_birth-1) = false;
+gt(:,6,1:t_birth - 1) = NaN; 
+
+%Isinside Surveillance Area Status
+tar_status = reshape(all(gt(1:2,:,:) >= sur_area(1,:)' & gt(1:2,:,:) <= sur_area(2,:)'), ...
+    size(gt,2),duration);
 
 %% Average Evaluation Value Initialize
 
@@ -396,11 +400,11 @@ for loop_i = 1 : loop_time
         sensor_traj_plot = plot(sensor_traj_coor(1,:), sensor_traj_coor(2,:), ...
             'LineWidth', 1.5, ...
             'Color', [0.1490 0.9882 0.7216]);
-        plot(sensor_traj_coor(1,end), sensor_traj_coor(2,end), ...
-            'LineWidth', 1.5, ...
-            'Color', [0.1490 0.9882 0.7216], ...
-            'Marker', 'diamond', ...
-            'MarkerSize', 5);
+%         plot(sensor_traj_coor(1,end), sensor_traj_coor(2,end), ...
+%             'LineWidth', 1.5, ...
+%             'Color', [0.1490 0.9882 0.7216], ...
+%             'Marker', 'diamond', ...
+%             'MarkerSize', 5);
         xlabel('x axis', 'FontSize', 12, 'FontWeight','bold');
         ylabel('y axis', 'FontSize', 12, 'FontWeight','bold');
         xlim([sur_area(1,1),sur_area(2,1)]);
